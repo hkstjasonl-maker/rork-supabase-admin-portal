@@ -15,7 +15,7 @@ import {
   Image,
 } from 'react-native';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Pencil, Trash2, X, Gift, Trophy, Calendar, Package, Hash, Eye, EyeOff, Tag, MessageSquare, ImageIcon, TicketPercent } from 'lucide-react-native';
+import { Plus, Pencil, Trash2, X, Gift, Trophy, Calendar, Package, Hash, Eye, EyeOff, Tag, MessageSquare, ImageIcon, TicketPercent, Ticket } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '@/constants/colors';
 import { useLanguage } from '@/providers/LanguageProvider';
@@ -38,7 +38,7 @@ interface MarketingCampaign {
   created_at: string;
 }
 
-type PrizeType = 'discount_code' | 'voucher' | 'gift' | 'message';
+type PrizeType = 'discount_code' | 'voucher' | 'redeem_voucher' | 'gift' | 'message';
 
 interface MarketingPrize {
   id: string;
@@ -54,6 +54,15 @@ interface MarketingPrize {
   quantity_remaining: number | null;
   probability_weight: number | null;
   expiry_date: string | null;
+  redeem_code_prefix: string | null;
+  redeem_instructions_en: string | null;
+  redeem_instructions_zh: string | null;
+  redeem_image_url: string | null;
+  gift_details_en: string | null;
+  gift_details_zh: string | null;
+  gift_collection_instructions: string | null;
+  congratulations_message_en: string | null;
+  congratulations_message_zh: string | null;
   created_at: string;
 }
 
@@ -64,12 +73,14 @@ interface PatientPrizeEntry {
   campaign_id: string | null;
   won_at: string;
   viewed: boolean;
+  redeem_code: string | null;
   patients?: { patient_name: string } | null;
   marketing_prizes?: {
     prize_name_en: string;
     prize_name_zh: string;
     prize_type: PrizeType;
     discount_code: string | null;
+    redeem_code_prefix: string | null;
   } | null;
   marketing_campaigns?: { title_en: string } | null;
 }
@@ -100,6 +111,15 @@ interface PrizeFormData {
   quantity_total: string;
   probability_weight: string;
   expiry_date: string;
+  redeem_code_prefix: string;
+  redeem_instructions_en: string;
+  redeem_instructions_zh: string;
+  redeem_image_url: string;
+  gift_details_en: string;
+  gift_details_zh: string;
+  gift_collection_instructions: string;
+  congratulations_message_en: string;
+  congratulations_message_zh: string;
 }
 
 const EMPTY_CAMPAIGN_FORM: CampaignFormData = {
@@ -128,11 +148,21 @@ const EMPTY_PRIZE_FORM: PrizeFormData = {
   quantity_total: '100',
   probability_weight: '50',
   expiry_date: '',
+  redeem_code_prefix: '',
+  redeem_instructions_en: '',
+  redeem_instructions_zh: '',
+  redeem_image_url: '',
+  gift_details_en: '',
+  gift_details_zh: '',
+  gift_collection_instructions: '',
+  congratulations_message_en: '',
+  congratulations_message_zh: '',
 };
 
 const PRIZE_TYPES: { value: PrizeType; labelEn: string; labelZh: string; color: string; bg: string }[] = [
   { value: 'discount_code', labelEn: 'Discount Code', labelZh: '折扣碼', color: Colors.green, bg: Colors.greenLight },
   { value: 'voucher', labelEn: 'Voucher Image', labelZh: '優惠券', color: '#7c5cbf', bg: '#ece4f7' },
+  { value: 'redeem_voucher', labelEn: 'Redeem Voucher', labelZh: '兌換券', color: '#2a9d8f', bg: '#d4f0ec' },
   { value: 'gift', labelEn: 'Gift', labelZh: '禮品', color: '#c47a2a', bg: '#f5e8d4' },
   { value: 'message', labelEn: 'Message', labelZh: '訊息', color: '#3a7ec0', bg: '#dce8f5' },
 ];
@@ -231,7 +261,7 @@ export default function MarketingDrawsScreen() {
       console.log('[MarketingDraws] Fetching prize log');
       const { data, error } = await supabase
         .from('patient_prizes')
-        .select('*, patients(patient_name), marketing_prizes(prize_name_en, prize_name_zh, prize_type, discount_code), marketing_campaigns(title_en)')
+        .select('*, patients(patient_name), marketing_prizes(prize_name_en, prize_name_zh, prize_type, discount_code, redeem_code_prefix), marketing_campaigns(title_en)')
         .order('won_at', { ascending: false })
         .limit(100);
       if (error) throw error;
@@ -291,18 +321,28 @@ export default function MarketingDrawsScreen() {
   const savePrizeMutation = useMutation({
     mutationFn: async (payload: PrizeFormData & { id?: string; campaign_id: string }) => {
       const qtyTotal = payload.quantity_total ? parseInt(payload.quantity_total, 10) : 100;
+      const pt = payload.prize_type;
       const row: Record<string, unknown> = {
         campaign_id: payload.campaign_id,
         prize_name_en: payload.prize_name_en.trim(),
         prize_name_zh: payload.prize_name_zh.trim(),
-        prize_type: payload.prize_type,
-        discount_code: payload.prize_type === 'discount_code' ? (payload.discount_code.trim() || null) : null,
-        voucher_image_url: payload.prize_type === 'voucher' ? (payload.voucher_image_url.trim() || null) : null,
+        prize_type: pt,
+        discount_code: pt === 'discount_code' ? (payload.discount_code.trim() || null) : null,
+        voucher_image_url: pt === 'voucher' ? (payload.voucher_image_url.trim() || null) : null,
         prize_description_en: payload.prize_description_en.trim() || null,
         prize_description_zh: payload.prize_description_zh.trim() || null,
         quantity_total: qtyTotal,
         probability_weight: payload.probability_weight ? parseInt(payload.probability_weight, 10) : 50,
         expiry_date: payload.expiry_date.trim() || null,
+        redeem_code_prefix: pt === 'redeem_voucher' ? (payload.redeem_code_prefix.trim() || null) : null,
+        redeem_instructions_en: pt === 'redeem_voucher' ? (payload.redeem_instructions_en.trim() || null) : null,
+        redeem_instructions_zh: pt === 'redeem_voucher' ? (payload.redeem_instructions_zh.trim() || null) : null,
+        redeem_image_url: pt === 'redeem_voucher' ? (payload.redeem_image_url.trim() || null) : null,
+        gift_details_en: pt === 'gift' ? (payload.gift_details_en.trim() || null) : null,
+        gift_details_zh: pt === 'gift' ? (payload.gift_details_zh.trim() || null) : null,
+        gift_collection_instructions: pt === 'gift' ? (payload.gift_collection_instructions.trim() || null) : null,
+        congratulations_message_en: pt === 'message' ? (payload.congratulations_message_en.trim() || null) : null,
+        congratulations_message_zh: pt === 'message' ? (payload.congratulations_message_zh.trim() || null) : null,
       };
       if (payload.id) {
         console.log('[MarketingDraws] Updating prize:', payload.id);
@@ -409,6 +449,15 @@ export default function MarketingDrawsScreen() {
       quantity_total: p.quantity_total != null ? String(p.quantity_total) : '100',
       probability_weight: p.probability_weight != null ? String(p.probability_weight) : '50',
       expiry_date: p.expiry_date ? p.expiry_date.split('T')[0] : '',
+      redeem_code_prefix: p.redeem_code_prefix ?? '',
+      redeem_instructions_en: p.redeem_instructions_en ?? '',
+      redeem_instructions_zh: p.redeem_instructions_zh ?? '',
+      redeem_image_url: p.redeem_image_url ?? '',
+      gift_details_en: p.gift_details_en ?? '',
+      gift_details_zh: p.gift_details_zh ?? '',
+      gift_collection_instructions: p.gift_collection_instructions ?? '',
+      congratulations_message_en: p.congratulations_message_en ?? '',
+      congratulations_message_zh: p.congratulations_message_zh ?? '',
     });
     setPrizeFormVisible(true);
   }, []);
@@ -568,6 +617,7 @@ export default function MarketingDrawsScreen() {
           const prizeType = entry.marketing_prizes?.prize_type;
           const typeMeta = prizeType ? getPrizeTypeMeta(prizeType) : null;
           const discountCode = entry.marketing_prizes?.discount_code;
+          const redeemCode = entry.redeem_code;
           return (
             <View key={entry.id} style={styles.logCard}>
               <View style={styles.logAvatarCircle}>
@@ -595,6 +645,11 @@ export default function MarketingDrawsScreen() {
                   {discountCode ? (
                     <View style={styles.codeChipSmall}>
                       <Text style={styles.codeChipSmallText}>{discountCode}</Text>
+                    </View>
+                  ) : null}
+                  {prizeType === 'redeem_voucher' && redeemCode ? (
+                    <View style={[styles.codeChipSmall, { backgroundColor: '#d4f0ec' }]}>
+                      <Text style={[styles.codeChipSmallText, { color: '#2a9d8f' }]}>{redeemCode}</Text>
                     </View>
                   ) : null}
                 </View>
@@ -810,6 +865,26 @@ export default function MarketingDrawsScreen() {
     </Modal>
   );
 
+  const renderPrizeTypeSpecificInfo = (p: MarketingPrize) => {
+    if (p.prize_type === 'discount_code' && p.discount_code) {
+      return (
+        <View style={styles.codeChipSmall}>
+          <Tag size={9} color={Colors.green} />
+          <Text style={styles.codeChipSmallText}>{p.discount_code}</Text>
+        </View>
+      );
+    }
+    if (p.prize_type === 'redeem_voucher' && p.redeem_code_prefix) {
+      return (
+        <View style={[styles.codeChipSmall, { backgroundColor: '#d4f0ec' }]}>
+          <Ticket size={9} color="#2a9d8f" />
+          <Text style={[styles.codeChipSmallText, { color: '#2a9d8f' }]}>{p.redeem_code_prefix}...</Text>
+        </View>
+      );
+    }
+    return null;
+  };
+
   const renderPrizesModal = () => (
     <Modal visible={prizesModalVisible} animationType="slide" transparent>
       <View style={styles.modalOverlay}>
@@ -851,10 +926,13 @@ export default function MarketingDrawsScreen() {
               prizes.map((p) => {
                 const typeMeta = getPrizeTypeMeta(p.prize_type);
                 const name = language === 'zh' ? p.prize_name_zh : p.prize_name_en;
+                const imageUrl = p.voucher_image_url || (p.prize_type === 'redeem_voucher' ? p.redeem_image_url : null);
+                const qtyRemaining = p.quantity_remaining ?? 0;
+                const isZero = qtyRemaining === 0;
                 return (
                   <View key={p.id} style={styles.prizeCard}>
-                    {p.voucher_image_url ? (
-                      <Image source={{ uri: p.voucher_image_url }} style={styles.prizeImage} />
+                    {imageUrl ? (
+                      <Image source={{ uri: imageUrl }} style={styles.prizeImage} />
                     ) : (
                       <View style={styles.prizeImagePlaceholder}>
                         <Package size={20} color={Colors.textTertiary} />
@@ -869,14 +947,9 @@ export default function MarketingDrawsScreen() {
                           </Text>
                         </View>
                       </View>
-                      {p.discount_code ? (
-                        <View style={styles.codeChipSmall}>
-                          <Tag size={9} color={Colors.green} />
-                          <Text style={styles.codeChipSmallText}>{p.discount_code}</Text>
-                        </View>
-                      ) : null}
+                      {renderPrizeTypeSpecificInfo(p)}
                       <View style={[styles.prizeMetaRow, { marginTop: 4 }]}>
-                        <Text style={styles.prizeQtyText}>
+                        <Text style={[styles.prizeQtyText, isZero && { color: Colors.danger }]}>
                           {p.quantity_remaining ?? '—'} / {p.quantity_total ?? '—'}
                         </Text>
                         <View style={[styles.prizeMetaChip, { backgroundColor: '#e0e8f5' }]}>
@@ -945,22 +1018,26 @@ export default function MarketingDrawsScreen() {
 
               <Text style={styles.formLabel}>{language === 'zh' ? '獎品類型 Prize Type' : 'Prize Type'}</Text>
               <View style={styles.typePickerRow}>
-                {PRIZE_TYPES.map((t) => (
-                  <TouchableOpacity
-                    key={t.value}
-                    style={[styles.typePickerBtn, currentType === t.value && { backgroundColor: t.bg, borderColor: t.color }]}
-                    onPress={() => setPrizeForm((p) => ({ ...p, prize_type: t.value }))}
-                    activeOpacity={0.7}
-                  >
-                    {t.value === 'discount_code' && <TicketPercent size={13} color={currentType === t.value ? t.color : Colors.textSecondary} />}
-                    {t.value === 'voucher' && <ImageIcon size={13} color={currentType === t.value ? t.color : Colors.textSecondary} />}
-                    {t.value === 'gift' && <Gift size={13} color={currentType === t.value ? t.color : Colors.textSecondary} />}
-                    {t.value === 'message' && <MessageSquare size={13} color={currentType === t.value ? t.color : Colors.textSecondary} />}
-                    <Text style={[styles.typePickerText, currentType === t.value && { color: t.color, fontWeight: '700' as const }]}>
-                      {language === 'zh' ? t.labelZh : t.labelEn}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
+                {PRIZE_TYPES.map((t) => {
+                  const iconColor = currentType === t.value ? t.color : Colors.textSecondary;
+                  return (
+                    <TouchableOpacity
+                      key={t.value}
+                      style={[styles.typePickerBtn, currentType === t.value && { backgroundColor: t.bg, borderColor: t.color }]}
+                      onPress={() => setPrizeForm((p) => ({ ...p, prize_type: t.value }))}
+                      activeOpacity={0.7}
+                    >
+                      {t.value === 'discount_code' && <TicketPercent size={13} color={iconColor} />}
+                      {t.value === 'voucher' && <ImageIcon size={13} color={iconColor} />}
+                      {t.value === 'redeem_voucher' && <Ticket size={13} color={iconColor} />}
+                      {t.value === 'gift' && <Gift size={13} color={iconColor} />}
+                      {t.value === 'message' && <MessageSquare size={13} color={iconColor} />}
+                      <Text style={[styles.typePickerText, currentType === t.value && { color: t.color, fontWeight: '700' as const }]}>
+                        {language === 'zh' ? t.labelZh : t.labelEn}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
               </View>
 
               {currentType === 'discount_code' && (
@@ -991,6 +1068,114 @@ export default function MarketingDrawsScreen() {
                   {prizeForm.voucher_image_url.trim() ? (
                     <Image source={{ uri: prizeForm.voucher_image_url.trim() }} style={styles.formImagePreview} />
                   ) : null}
+                </>
+              )}
+
+              {currentType === 'redeem_voucher' && (
+                <>
+                  <Text style={styles.formLabel}>Redeem Code Prefix 兌換碼前綴</Text>
+                  <TextInput
+                    style={[styles.formInput, styles.codeInput]}
+                    value={prizeForm.redeem_code_prefix}
+                    onChangeText={(v) => setPrizeForm((p) => ({ ...p, redeem_code_prefix: v }))}
+                    placeholder="e.g. RDM-"
+                    placeholderTextColor={Colors.textTertiary}
+                    autoCapitalize="characters"
+                  />
+
+                  <Text style={styles.formLabel}>Redeem Instructions (EN) 兌換說明</Text>
+                  <TextInput
+                    style={[styles.formInput, styles.formTextArea]}
+                    value={prizeForm.redeem_instructions_en}
+                    onChangeText={(v) => setPrizeForm((p) => ({ ...p, redeem_instructions_en: v }))}
+                    placeholder="Instructions for redeeming this voucher"
+                    placeholderTextColor={Colors.textTertiary}
+                    multiline
+                    numberOfLines={3}
+                  />
+
+                  <Text style={styles.formLabel}>Redeem Instructions (繁中) 兌換說明</Text>
+                  <TextInput
+                    style={[styles.formInput, styles.formTextArea]}
+                    value={prizeForm.redeem_instructions_zh}
+                    onChangeText={(v) => setPrizeForm((p) => ({ ...p, redeem_instructions_zh: v }))}
+                    placeholder="兌換此優惠券的說明"
+                    placeholderTextColor={Colors.textTertiary}
+                    multiline
+                    numberOfLines={3}
+                  />
+
+                  <Text style={styles.formLabel}>Voucher Image (optional) 優惠券圖片</Text>
+                  <TextInput
+                    style={styles.formInput}
+                    value={prizeForm.redeem_image_url}
+                    onChangeText={(v) => setPrizeForm((p) => ({ ...p, redeem_image_url: v }))}
+                    placeholder="https://..."
+                    placeholderTextColor={Colors.textTertiary}
+                    autoCapitalize="none"
+                  />
+                  {prizeForm.redeem_image_url.trim() ? (
+                    <Image source={{ uri: prizeForm.redeem_image_url.trim() }} style={styles.formImagePreview} />
+                  ) : null}
+                </>
+              )}
+
+              {currentType === 'gift' && (
+                <>
+                  <Text style={styles.formLabel}>Gift Details (EN) 禮品詳情</Text>
+                  <TextInput
+                    style={styles.formInput}
+                    value={prizeForm.gift_details_en}
+                    onChangeText={(v) => setPrizeForm((p) => ({ ...p, gift_details_en: v }))}
+                    placeholder="Gift description"
+                    placeholderTextColor={Colors.textTertiary}
+                  />
+
+                  <Text style={styles.formLabel}>Gift Details (繁中) 禮品詳情</Text>
+                  <TextInput
+                    style={styles.formInput}
+                    value={prizeForm.gift_details_zh}
+                    onChangeText={(v) => setPrizeForm((p) => ({ ...p, gift_details_zh: v }))}
+                    placeholder="禮品描述"
+                    placeholderTextColor={Colors.textTertiary}
+                  />
+
+                  <Text style={styles.formLabel}>Collection Instructions 領取說明</Text>
+                  <TextInput
+                    style={[styles.formInput, styles.formTextArea]}
+                    value={prizeForm.gift_collection_instructions}
+                    onChangeText={(v) => setPrizeForm((p) => ({ ...p, gift_collection_instructions: v }))}
+                    placeholder="How to collect the gift"
+                    placeholderTextColor={Colors.textTertiary}
+                    multiline
+                    numberOfLines={3}
+                  />
+                </>
+              )}
+
+              {currentType === 'message' && (
+                <>
+                  <Text style={styles.formLabel}>Congratulations Message (EN) 恭喜訊息</Text>
+                  <TextInput
+                    style={[styles.formInput, styles.formTextArea]}
+                    value={prizeForm.congratulations_message_en}
+                    onChangeText={(v) => setPrizeForm((p) => ({ ...p, congratulations_message_en: v }))}
+                    placeholder="Congratulations! You won..."
+                    placeholderTextColor={Colors.textTertiary}
+                    multiline
+                    numberOfLines={3}
+                  />
+
+                  <Text style={styles.formLabel}>Congratulations Message (繁中) 恭喜訊息</Text>
+                  <TextInput
+                    style={[styles.formInput, styles.formTextArea]}
+                    value={prizeForm.congratulations_message_zh}
+                    onChangeText={(v) => setPrizeForm((p) => ({ ...p, congratulations_message_zh: v }))}
+                    placeholder="恭喜您中獎了..."
+                    placeholderTextColor={Colors.textTertiary}
+                    multiline
+                    numberOfLines={3}
+                  />
                 </>
               )}
 

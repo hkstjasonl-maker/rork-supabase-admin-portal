@@ -17,6 +17,14 @@ export interface Exercise {
   narrative_audio_youtube_id: string | null;
   narrative_audio_youtube_id_zh_hant: string | null;
   narrative_audio_youtube_id_zh_hans: string | null;
+  subtitle_url_en: string | null;
+  subtitle_url_zh_hant: string | null;
+  subtitle_url_zh_hans: string | null;
+  audio_transcript_en: string | null;
+  audio_transcript_zh_hant: string | null;
+  audio_transcript_zh_hans: string | null;
+  default_dosage_zh_hant: string | null;
+  default_dosage_zh_hans: string | null;
   created_at: string;
 }
 
@@ -38,6 +46,14 @@ export interface ExerciseFormData {
   narrative_audio_youtube_id: string;
   narrative_audio_youtube_id_zh_hant: string;
   narrative_audio_youtube_id_zh_hans: string;
+  subtitle_url_en: string;
+  subtitle_url_zh_hant: string;
+  subtitle_url_zh_hans: string;
+  audio_transcript_en: string;
+  audio_transcript_zh_hant: string;
+  audio_transcript_zh_hans: string;
+  default_dosage_zh_hant: string;
+  default_dosage_zh_hans: string;
 }
 
 export function extractVimeoId(input: string): string {

@@ -53,6 +53,14 @@ export default function ExerciseFormModal({
   const [narrativeEn, setNarrativeEn] = useState('');
   const [narrativeZhHant, setNarrativeZhHant] = useState('');
   const [narrativeZhHans, setNarrativeZhHans] = useState('');
+  const [subtitleEn, setSubtitleEn] = useState('');
+  const [subtitleZhHant, setSubtitleZhHant] = useState('');
+  const [subtitleZhHans, setSubtitleZhHans] = useState('');
+  const [transcriptEn, setTranscriptEn] = useState('');
+  const [transcriptZhHant, setTranscriptZhHant] = useState('');
+  const [transcriptZhHans, setTranscriptZhHans] = useState('');
+  const [dosageZhHant, setDosageZhHant] = useState('');
+  const [dosageZhHans, setDosageZhHans] = useState('');
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -75,6 +83,14 @@ export default function ExerciseFormModal({
         setNarrativeEn(exercise.narrative_audio_youtube_id ?? '');
         setNarrativeZhHant(exercise.narrative_audio_youtube_id_zh_hant ?? '');
         setNarrativeZhHans(exercise.narrative_audio_youtube_id_zh_hans ?? '');
+        setSubtitleEn(exercise.subtitle_url_en ?? '');
+        setSubtitleZhHant(exercise.subtitle_url_zh_hant ?? '');
+        setSubtitleZhHans(exercise.subtitle_url_zh_hans ?? '');
+        setTranscriptEn(exercise.audio_transcript_en ?? '');
+        setTranscriptZhHant(exercise.audio_transcript_zh_hant ?? '');
+        setTranscriptZhHans(exercise.audio_transcript_zh_hans ?? '');
+        setDosageZhHant(exercise.default_dosage_zh_hant ?? '');
+        setDosageZhHans(exercise.default_dosage_zh_hans ?? '');
       } else {
         setTitleEn('');
         setTitleZhHant('');
@@ -93,6 +109,14 @@ export default function ExerciseFormModal({
         setNarrativeEn('');
         setNarrativeZhHant('');
         setNarrativeZhHans('');
+        setSubtitleEn('');
+        setSubtitleZhHant('');
+        setSubtitleZhHans('');
+        setTranscriptEn('');
+        setTranscriptZhHant('');
+        setTranscriptZhHans('');
+        setDosageZhHant('');
+        setDosageZhHans('');
       }
       setError(null);
     }
@@ -132,11 +156,21 @@ export default function ExerciseFormModal({
       narrative_audio_youtube_id: narrativeEn.trim(),
       narrative_audio_youtube_id_zh_hant: narrativeZhHant.trim(),
       narrative_audio_youtube_id_zh_hans: narrativeZhHans.trim(),
+      subtitle_url_en: subtitleEn.trim(),
+      subtitle_url_zh_hant: subtitleZhHant.trim(),
+      subtitle_url_zh_hans: subtitleZhHans.trim(),
+      audio_transcript_en: transcriptEn.trim(),
+      audio_transcript_zh_hant: transcriptZhHant.trim(),
+      audio_transcript_zh_hans: transcriptZhHans.trim(),
+      default_dosage_zh_hant: dosageZhHant.trim(),
+      default_dosage_zh_hans: dosageZhHans.trim(),
     });
   }, [
     titleEn, titleZhHant, titleZhHans, vimeoInput, youtubeInput,
     category, tagsInput, duration, dosage, dosagePerDay, dosageDaysPerWeek,
     audioEn, audioZhHant, audioZhHans, narrativeEn, narrativeZhHant, narrativeZhHans,
+    subtitleEn, subtitleZhHant, subtitleZhHans, transcriptEn, transcriptZhHant, transcriptZhHans,
+    dosageZhHant, dosageZhHans,
     onSave, t,
   ]);
 
@@ -209,6 +243,8 @@ export default function ExerciseFormModal({
           <Text style={styles.sectionLabel}>Dosage</Text>
           {renderField(t('exercise.duration'), duration, setDuration, { keyboardType: 'numeric' })}
           {renderField(t('exercise.dosage'), dosage, setDosage)}
+          {renderField('Dosage (繁中)', dosageZhHant, setDosageZhHant)}
+          {renderField('Dosage (简中)', dosageZhHans, setDosageZhHans)}
           {renderField(t('exercise.dosage_per_day'), dosagePerDay, setDosagePerDay, { keyboardType: 'numeric' })}
           {renderField(t('exercise.dosage_days_per_week'), dosageDaysPerWeek, setDosageDaysPerWeek, { keyboardType: 'numeric' })}
 
@@ -221,6 +257,16 @@ export default function ExerciseFormModal({
           {renderField(t('exercise.narrative_en'), narrativeEn, setNarrativeEn)}
           {renderField(t('exercise.narrative_zh_hant'), narrativeZhHant, setNarrativeZhHant)}
           {renderField(t('exercise.narrative_zh_hans'), narrativeZhHans, setNarrativeZhHans)}
+
+          <Text style={styles.sectionLabel}>Subtitles</Text>
+          {renderField('Subtitle URL (EN)', subtitleEn, setSubtitleEn, { keyboardType: 'url' })}
+          {renderField('Subtitle URL (繁中)', subtitleZhHant, setSubtitleZhHant, { keyboardType: 'url' })}
+          {renderField('Subtitle URL (简中)', subtitleZhHans, setSubtitleZhHans, { keyboardType: 'url' })}
+
+          <Text style={styles.sectionLabel}>Transcripts</Text>
+          {renderField('Audio Transcript (EN)', transcriptEn, setTranscriptEn, { multiline: true })}
+          {renderField('Audio Transcript (繁中)', transcriptZhHant, setTranscriptZhHant, { multiline: true })}
+          {renderField('Audio Transcript (简中)', transcriptZhHans, setTranscriptZhHans, { multiline: true })}
 
           {error && (
             <View style={styles.errorContainer}>

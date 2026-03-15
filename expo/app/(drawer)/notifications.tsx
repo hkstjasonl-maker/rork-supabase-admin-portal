@@ -298,10 +298,10 @@ export default function NotificationsScreen() {
                         </Text>
                       </View>
                       <View style={[styles.badge, {
-                        backgroundColor: status === 'active' ? Colors.greenLight : status === 'expired' ? Colors.dangerLight : Colors.borderLight
+                        backgroundColor: status === 'active' ? Colors.greenLight : status === 'scheduled' ? '#e0e8f5' : status === 'expired' ? Colors.dangerLight : Colors.borderLight
                       }]}>
                         <Text style={[styles.badgeText, {
-                          color: status === 'active' ? Colors.green : status === 'expired' ? Colors.danger : Colors.textSecondary
+                          color: status === 'active' ? Colors.green : status === 'scheduled' ? '#4a6fa5' : status === 'expired' ? Colors.danger : Colors.textSecondary
                         }]}>
                           {t(statusKey)}
                         </Text>

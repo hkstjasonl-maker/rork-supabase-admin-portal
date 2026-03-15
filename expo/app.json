@@ -1,11 +1,11 @@
 {
   "expo": {
     "name": "SLP Jason Portal",
-    "slug": "rork-app",
+    "slug": "b6waye0k5l50zrsp14oz9",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "rork-app",
+    "scheme": "b6waye0k5l50zrsp14oz9",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "splash": {
@@ -15,7 +15,7 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.slpjason.portal",
+      "bundleIdentifier": "app.rork.b6waye0k5l50zrsp14oz9",
       "infoPlist": {
         "NSCameraUsageDescription": "This app needs camera access to capture exercise review videos.",
         "NSMicrophoneUsageDescription": "This app needs microphone access to record exercise review videos.",
@@ -27,7 +27,7 @@
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.slpjason.portal"
+      "package": "app.rork.b6waye0k5l50zrsp14oz9"
     },
     "web": {
       "favicon": "./assets/images/favicon.png"

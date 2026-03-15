@@ -71,7 +71,7 @@ export default function LoginScreen() {
 
           <Text style={styles.appTitle}>{t('app.title')}</Text>
           <Text style={styles.appSubtitle}>
-            {t('app.subtitle')} {language === 'en' ? '管理平台' : 'Admin Portal'}
+            {t('app.subtitle')}
           </Text>
 
           <Animated.View style={[styles.formCard, { transform: [{ translateX: shakeAnim }] }]}>
@@ -126,7 +126,7 @@ export default function LoginScreen() {
         </View>
 
         <View style={styles.bottomSection}>
-          <Text style={styles.footerText}>SLP Jason Admin v1.0</Text>
+          <Text style={styles.footerText}>SLP Jason Portal v1.0</Text>
         </View>
       </KeyboardAvoidingView>
     </View>

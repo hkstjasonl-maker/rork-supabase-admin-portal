@@ -1,18 +1,17 @@
 {
-  "name": "expo-app",
+  "name": "slp-jason-portal",
   "main": "expo-router/entry",
   "version": "1.0.0",
   "scripts": {
-    "start": "bunx rork start -p b6waye0k5l50zrsp14oz9 --tunnel",
-    "start-web": "bunx rork start -p b6waye0k5l50zrsp14oz9 --web --tunnel",
-    "start-web-dev": "DEBUG=expo* bunx rork start -p b6waye0k5l50zrsp14oz9 --web --tunnel",
+    "start": "expo start",
+    "start-web": "expo start --web",
+    "ios": "expo start --ios",
     "lint": "expo lint"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",
     "@nkzw/create-context-hook": "^1.1.0",
     "@react-native-async-storage/async-storage": "2.2.0",
-    "@rork-ai/toolkit-sdk": "^0.2.51",
     "@stardazed/streams-text-encoding": "^1.0.2",
     "@supabase/supabase-js": "^2.99.0",
     "@tanstack/react-query": "^5.83.0",

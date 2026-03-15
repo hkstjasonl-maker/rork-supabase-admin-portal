@@ -184,7 +184,7 @@ export default function Sidebar() {
                 <MessageCircle size={20} color={Colors.white} />
               </View>
               <View>
-                <Text style={styles.logoTitle}>SLP Jason</Text>
+                <Text style={styles.logoTitle}>SLP Jason Portal</Text>
                 <Text style={styles.logoSubtitle}>{t('app.subtitle')}</Text>
               </View>
             </View>

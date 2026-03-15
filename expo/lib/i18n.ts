@@ -8,8 +8,8 @@ type TranslationKeys = {
 };
 
 const translations: TranslationKeys = {
-  'app.title': { en: 'SLP Jason', zh: 'SLP Jason' },
-  'app.subtitle': { en: 'Admin Portal', zh: '管理平台' },
+  'app.title': { en: 'SLP Jason Portal', zh: 'SLP Jason 管理平台' },
+  'app.subtitle': { en: 'Clinical Administration', zh: '臨床管理' },
   'login.title': { en: 'Welcome Back', zh: '歡迎回來' },
   'login.subtitle': { en: 'Sign in to your admin account', zh: '登入管理員帳戶' },
   'login.email': { en: 'Email', zh: '電郵地址' },

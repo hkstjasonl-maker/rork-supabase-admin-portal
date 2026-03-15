@@ -19,6 +19,7 @@ import {
   ChevronDown, Check, Search,
 } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import * as Crypto from 'expo-crypto';
 import { Colors } from '@/constants/colors';
 import { useLanguage } from '@/providers/LanguageProvider';
 import { supabase } from '@/lib/supabase';
@@ -48,13 +49,11 @@ async function hashPassword(password: string): Promise<string> {
     const hashArray = Array.from(new Uint8Array(hashBuffer));
     return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
   }
-  let hash = 0;
-  for (let i = 0; i < data.length; i++) {
-    const char = data.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
-    hash |= 0;
-  }
-  return Math.abs(hash).toString(16).padStart(16, '0');
+  const digest = await Crypto.digestStringAsync(
+    Crypto.CryptoDigestAlgorithm.SHA256,
+    data
+  );
+  return digest;
 }
 
 export default function CliniciansScreen() {

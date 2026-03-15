@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "SLP Jason Admin",
-    "slug": "b6waye0k5l50zrsp14oz9",
+    "name": "SLP Jason Portal",
+    "slug": "slp-jason-portal",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "rork-app",
+    "scheme": "slp-jason-portal",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "splash": {
@@ -14,15 +14,20 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": false,
-      "bundleIdentifier": "app.rork.b6waye0k5l50zrsp14oz9"
+      "supportsTablet": true,
+      "bundleIdentifier": "com.slpjason.portal",
+      "infoPlist": {
+        "NSCameraUsageDescription": "This app needs camera access to capture exercise review videos.",
+        "NSMicrophoneUsageDescription": "This app needs microphone access to record exercise review videos.",
+        "NSPhotoLibraryUsageDescription": "This app needs photo library access to upload images."
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "app.rork.b6waye0k5l50zrsp14oz9"
+      "package": "com.slpjason.portal"
     },
     "web": {
       "favicon": "./assets/images/favicon.png"
@@ -31,7 +36,7 @@
       [
         "expo-router",
         {
-          "origin": "https://rork.com/"
+          "origin": "https://slpjason.com/"
         }
       ],
       "expo-font",

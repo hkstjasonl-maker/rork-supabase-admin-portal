@@ -15,7 +15,7 @@ import {
   Image,
 } from 'react-native';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Pencil, Trash2, X, Gift, Trophy, Calendar, Package, Hash, Eye, EyeOff, Tag, MessageSquare, ImageIcon, TicketPercent, Ticket } from 'lucide-react-native';
+import { Plus, Pencil, Trash2, X, Gift, Trophy, Calendar, Package, Hash, Eye, EyeOff, Tag, MessageSquare, ImageIcon, TicketPercent, Ticket, ChevronLeft } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '@/constants/colors';
 import { useLanguage } from '@/providers/LanguageProvider';
@@ -220,8 +220,7 @@ export default function MarketingDrawsScreen() {
   const [editingCampaign, setEditingCampaign] = useState<MarketingCampaign | null>(null);
   const [campaignForm, setCampaignForm] = useState<CampaignFormData>(EMPTY_CAMPAIGN_FORM);
 
-  const [prizesModalVisible, setPrizesModalVisible] = useState(false);
-  const [selectedCampaign, setSelectedCampaign] = useState<MarketingCampaign | null>(null);
+  const [prizeViewCampaignId, setPrizeViewCampaignId] = useState<string | null>(null);
   const [prizeFormVisible, setPrizeFormVisible] = useState(false);
   const [editingPrize, setEditingPrize] = useState<MarketingPrize | null>(null);
   const [prizeForm, setPrizeForm] = useState<PrizeFormData>(EMPTY_PRIZE_FORM);
@@ -240,19 +239,19 @@ export default function MarketingDrawsScreen() {
   });
 
   const prizesQuery = useQuery({
-    queryKey: ['marketing_prizes', selectedCampaign?.id],
+    queryKey: ['marketing_prizes', prizeViewCampaignId],
     queryFn: async () => {
-      if (!selectedCampaign) return [];
-      console.log('[MarketingDraws] Fetching prizes for campaign:', selectedCampaign.id);
+      if (!prizeViewCampaignId) return [];
+      console.log('[MarketingDraws] Fetching prizes for campaign:', prizeViewCampaignId);
       const { data, error } = await supabase
         .from('marketing_prizes')
         .select('*')
-        .eq('campaign_id', selectedCampaign.id)
-        .order('created_at', { ascending: true });
+        .eq('campaign_id', prizeViewCampaignId)
+        .order('probability_weight', { ascending: false });
       if (error) throw error;
       return (data ?? []) as MarketingPrize[];
     },
-    enabled: !!selectedCampaign,
+    enabled: !!prizeViewCampaignId,
   });
 
   const prizeLogQuery = useQuery({
@@ -356,7 +355,7 @@ export default function MarketingDrawsScreen() {
       }
     },
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['marketing_prizes', selectedCampaign?.id] });
+      void queryClient.invalidateQueries({ queryKey: ['marketing_prizes', prizeViewCampaignId] });
       setPrizeFormVisible(false);
       setEditingPrize(null);
     },
@@ -372,7 +371,7 @@ export default function MarketingDrawsScreen() {
       if (error) throw error;
     },
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['marketing_prizes', selectedCampaign?.id] });
+      void queryClient.invalidateQueries({ queryKey: ['marketing_prizes', prizeViewCampaignId] });
     },
   });
 
@@ -426,8 +425,7 @@ export default function MarketingDrawsScreen() {
   }, [campaignForm, editingCampaign, saveCampaignMutation, language]);
 
   const handleManagePrizes = useCallback((c: MarketingCampaign) => {
-    setSelectedCampaign(c);
-    setPrizesModalVisible(true);
+    setPrizeViewCampaignId(c.id);
   }, []);
 
   const handleAddPrize = useCallback(() => {
@@ -483,9 +481,9 @@ export default function MarketingDrawsScreen() {
       Alert.alert('', language === 'zh' ? '請輸入中文獎品名稱' : 'Prize name (繁中) is required');
       return;
     }
-    if (!selectedCampaign) return;
-    savePrizeMutation.mutate({ ...prizeForm, campaign_id: selectedCampaign.id, id: editingPrize?.id });
-  }, [prizeForm, editingPrize, selectedCampaign, savePrizeMutation, language]);
+    if (!prizeViewCampaignId) return;
+    savePrizeMutation.mutate({ ...prizeForm, campaign_id: prizeViewCampaignId, id: editingPrize?.id });
+  }, [prizeForm, editingPrize, prizeViewCampaignId, savePrizeMutation, language]);
 
   const campaigns = campaignsQuery.data ?? [];
   const prizes = prizesQuery.data ?? [];
@@ -510,7 +508,99 @@ export default function MarketingDrawsScreen() {
     );
   };
 
-  const renderCampaignsTab = () => (
+  const renderPrizeListView = () => {
+    const campaign = campaigns.find((c) => c.id === prizeViewCampaignId);
+    const campaignTitle = campaign
+      ? (language === 'zh' ? campaign.title_zh : campaign.title_en)
+      : '';
+    return (
+      <>
+        <TouchableOpacity
+          onPress={() => setPrizeViewCampaignId(null)}
+          style={styles.backBtn}
+          activeOpacity={0.7}
+        >
+          <ChevronLeft size={18} color={Colors.accent} />
+          <Text style={styles.backBtnText}>{language === 'zh' ? '返回活動列表' : 'Back to Campaigns'}</Text>
+        </TouchableOpacity>
+
+        <Text style={styles.prizeViewTitle} numberOfLines={2}>
+          {campaignTitle} — {language === 'zh' ? '獎品' : 'Prizes'}
+        </Text>
+
+        <View style={styles.actionBar}>
+          <TouchableOpacity style={styles.primaryBtn} onPress={handleAddPrize} activeOpacity={0.7}>
+            <Plus size={16} color={Colors.white} />
+            <Text style={styles.primaryBtnText}>{language === 'zh' ? '新增獎品' : 'Add Prize'}</Text>
+          </TouchableOpacity>
+        </View>
+
+        {prizesQuery.isLoading ? (
+          <View style={styles.centered}>
+            <ActivityIndicator size="large" color={Colors.accent} />
+          </View>
+        ) : prizes.length === 0 ? (
+          <View style={styles.centered}>
+            <Package size={36} color={Colors.textTertiary} />
+            <Text style={styles.emptyText}>{language === 'zh' ? '尚無獎品' : 'No prizes yet'}</Text>
+          </View>
+        ) : (
+          prizes.map((p) => {
+            const typeMeta = getPrizeTypeMeta(p.prize_type);
+            const name = language === 'zh' ? p.prize_name_zh : p.prize_name_en;
+            const imageUrl = p.voucher_image_url || (p.prize_type === 'redeem_voucher' ? p.redeem_image_url : null);
+            const qtyRemaining = p.quantity_remaining ?? 0;
+            const isZero = qtyRemaining === 0;
+            return (
+              <View key={p.id} style={styles.prizeCard}>
+                {imageUrl ? (
+                  <Image source={{ uri: imageUrl }} style={styles.prizeImage} />
+                ) : (
+                  <View style={styles.prizeImagePlaceholder}>
+                    <Package size={20} color={Colors.textTertiary} />
+                  </View>
+                )}
+                <View style={styles.prizeInfo}>
+                  <Text style={styles.prizeName} numberOfLines={1}>{name}</Text>
+                  <View style={styles.prizeMetaRow}>
+                    <View style={[styles.typeBadgeSmall, { backgroundColor: typeMeta.bg }]}>
+                      <Text style={[styles.typeBadgeSmallText, { color: typeMeta.color }]}>
+                        {language === 'zh' ? typeMeta.labelZh : typeMeta.labelEn}
+                      </Text>
+                    </View>
+                  </View>
+                  {renderPrizeTypeSpecificInfo(p)}
+                  <View style={[styles.prizeMetaRow, { marginTop: 4 }]}>
+                    <Text style={[styles.prizeQtyText, isZero && { color: Colors.danger }]}>
+                      {p.quantity_remaining ?? '—'} / {p.quantity_total ?? '—'}
+                    </Text>
+                    <View style={[styles.prizeMetaChip, { backgroundColor: '#e0e8f5' }]}>
+                      <Text style={[styles.prizeMetaChipText, { color: '#4a6fa5' }]}>
+                        W:{p.probability_weight ?? 0}
+                      </Text>
+                    </View>
+                    {p.expiry_date ? (
+                      <Text style={styles.prizeSortText}>{formatDate(p.expiry_date)}</Text>
+                    ) : null}
+                  </View>
+                </View>
+                <View style={styles.prizeActions}>
+                  <TouchableOpacity style={styles.iconBtn} onPress={() => handleEditPrize(p)} activeOpacity={0.7}>
+                    <Pencil size={14} color={Colors.accent} />
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.iconBtn} onPress={() => handleDeletePrize(p)} activeOpacity={0.7}>
+                    <Trash2 size={14} color={Colors.danger} />
+                  </TouchableOpacity>
+                </View>
+              </View>
+            );
+          })
+        )}
+      </>
+    );
+  };
+
+  const renderCampaignListView = () => (
     <>
       <View style={styles.actionBar}>
         <TouchableOpacity style={styles.primaryBtn} onPress={handleAddCampaign} activeOpacity={0.7}>
@@ -592,6 +682,12 @@ export default function MarketingDrawsScreen() {
           );
         })
       )}
+    </>
+  );
+
+  const renderCampaignsTab = () => (
+    <>
+      {prizeViewCampaignId ? renderPrizeListView() : renderCampaignListView()}
     </>
   );
 
@@ -884,101 +980,6 @@ export default function MarketingDrawsScreen() {
     }
     return null;
   };
-
-  const renderPrizesModal = () => (
-    <Modal visible={prizesModalVisible} animationType="slide" transparent>
-      <View style={styles.modalOverlay}>
-        <View style={[styles.modalContent, styles.prizesModalContent, { paddingBottom: insets.bottom + 16 }]}>
-          <View style={styles.modalHeader}>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.modalTitle}>
-                {language === 'zh' ? '獎品管理' : 'Manage Prizes'}
-              </Text>
-              {selectedCampaign && (
-                <Text style={styles.prizesSubtitle}>
-                  {language === 'zh' ? selectedCampaign.title_zh : selectedCampaign.title_en}
-                </Text>
-              )}
-            </View>
-            <TouchableOpacity onPress={() => { setPrizesModalVisible(false); setSelectedCampaign(null); }} style={styles.modalCloseBtn} activeOpacity={0.7}>
-              <X size={20} color={Colors.text} />
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.prizesActionBar}>
-            <TouchableOpacity style={styles.primaryBtn} onPress={handleAddPrize} activeOpacity={0.7}>
-              <Plus size={16} color={Colors.white} />
-              <Text style={styles.primaryBtnText}>{language === 'zh' ? '新增獎品' : 'Add Prize'}</Text>
-            </TouchableOpacity>
-          </View>
-
-          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.prizesListContent}>
-            {prizesQuery.isLoading ? (
-              <View style={styles.centered}>
-                <ActivityIndicator size="large" color={Colors.accent} />
-              </View>
-            ) : prizes.length === 0 ? (
-              <View style={styles.centered}>
-                <Package size={36} color={Colors.textTertiary} />
-                <Text style={styles.emptyText}>{language === 'zh' ? '尚無獎品' : 'No prizes yet'}</Text>
-              </View>
-            ) : (
-              prizes.map((p) => {
-                const typeMeta = getPrizeTypeMeta(p.prize_type);
-                const name = language === 'zh' ? p.prize_name_zh : p.prize_name_en;
-                const imageUrl = p.voucher_image_url || (p.prize_type === 'redeem_voucher' ? p.redeem_image_url : null);
-                const qtyRemaining = p.quantity_remaining ?? 0;
-                const isZero = qtyRemaining === 0;
-                return (
-                  <View key={p.id} style={styles.prizeCard}>
-                    {imageUrl ? (
-                      <Image source={{ uri: imageUrl }} style={styles.prizeImage} />
-                    ) : (
-                      <View style={styles.prizeImagePlaceholder}>
-                        <Package size={20} color={Colors.textTertiary} />
-                      </View>
-                    )}
-                    <View style={styles.prizeInfo}>
-                      <Text style={styles.prizeName} numberOfLines={1}>{name}</Text>
-                      <View style={styles.prizeMetaRow}>
-                        <View style={[styles.typeBadgeSmall, { backgroundColor: typeMeta.bg }]}>
-                          <Text style={[styles.typeBadgeSmallText, { color: typeMeta.color }]}>
-                            {language === 'zh' ? typeMeta.labelZh : typeMeta.labelEn}
-                          </Text>
-                        </View>
-                      </View>
-                      {renderPrizeTypeSpecificInfo(p)}
-                      <View style={[styles.prizeMetaRow, { marginTop: 4 }]}>
-                        <Text style={[styles.prizeQtyText, isZero && { color: Colors.danger }]}>
-                          {p.quantity_remaining ?? '—'} / {p.quantity_total ?? '—'}
-                        </Text>
-                        <View style={[styles.prizeMetaChip, { backgroundColor: '#e0e8f5' }]}>
-                          <Text style={[styles.prizeMetaChipText, { color: '#4a6fa5' }]}>
-                            W:{p.probability_weight ?? 0}
-                          </Text>
-                        </View>
-                        {p.expiry_date ? (
-                          <Text style={styles.prizeSortText}>{formatDate(p.expiry_date)}</Text>
-                        ) : null}
-                      </View>
-                    </View>
-                    <View style={styles.prizeActions}>
-                      <TouchableOpacity style={styles.iconBtn} onPress={() => handleEditPrize(p)} activeOpacity={0.7}>
-                        <Pencil size={14} color={Colors.accent} />
-                      </TouchableOpacity>
-                      <TouchableOpacity style={styles.iconBtn} onPress={() => handleDeletePrize(p)} activeOpacity={0.7}>
-                        <Trash2 size={14} color={Colors.danger} />
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                );
-              })
-            )}
-          </ScrollView>
-        </View>
-      </View>
-    </Modal>
-  );
 
   const renderPrizeFormModal = () => {
     const currentType = prizeForm.prize_type;
@@ -1306,7 +1307,6 @@ export default function MarketingDrawsScreen() {
       </ScrollView>
 
       {renderCampaignFormModal()}
-      {renderPrizesModal()}
       {renderPrizeFormModal()}
     </View>
   );
@@ -1642,9 +1642,7 @@ const styles = StyleSheet.create({
     maxHeight: '90%',
     paddingTop: 16,
   },
-  prizesModalContent: {
-    maxHeight: '95%',
-  },
+
   modalHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1657,11 +1655,7 @@ const styles = StyleSheet.create({
     fontWeight: '700' as const,
     color: Colors.text,
   },
-  prizesSubtitle: {
-    fontSize: 13,
-    color: Colors.textSecondary,
-    marginTop: 2,
-  },
+
   modalCloseBtn: {
     width: 34,
     height: 34,
@@ -1670,14 +1664,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  prizesActionBar: {
-    paddingHorizontal: 20,
-    marginBottom: 12,
-  },
-  prizesListContent: {
-    paddingHorizontal: 20,
-    paddingBottom: 16,
-  },
+
   prizeCard: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1910,5 +1897,23 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600' as const,
     color: Colors.white,
+  },
+  backBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 12,
+    paddingVertical: 4,
+  },
+  backBtnText: {
+    fontSize: 14,
+    fontWeight: '600' as const,
+    color: Colors.accent,
+  },
+  prizeViewTitle: {
+    fontSize: 16,
+    fontWeight: '700' as const,
+    color: Colors.text,
+    marginBottom: 12,
   },
 });

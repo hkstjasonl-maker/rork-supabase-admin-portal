@@ -31,11 +31,11 @@ function AuthGate() {
   }
 
   return (
-    <Stack screenOptions={{ headerBackTitle: 'Back' }}>
+    <Stack screenOptions={{ headerShown: false, headerBackTitle: 'Back' }}>
       {isAuthenticated ? (
-        <Stack.Screen name="(drawer)" options={{ headerShown: false }} />
+        <Stack.Screen name="(drawer)" options={{ headerShown: false, title: 'SLP Jason Portal' }} />
       ) : (
-        <Stack.Screen name="login" options={{ headerShown: false }} />
+        <Stack.Screen name="login" options={{ headerShown: false, title: 'Login' }} />
       )}
     </Stack>
   );

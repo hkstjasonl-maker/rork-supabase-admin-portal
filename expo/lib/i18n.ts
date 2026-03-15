@@ -299,6 +299,7 @@ const translations: TranslationKeys = {
   'kv.desc_zh': { en: 'Description (繁中)', zh: '描述（繁中）' },
   'kv.creator_en': { en: 'Creator (EN)', zh: '建立者（英文）' },
   'kv.creator_zh': { en: 'Creator (繁中)', zh: '建立者（繁中）' },
+  'kv.creator_photo': { en: 'Creator Photo URL', zh: '建立者照片 URL' },
   'kv.category': { en: 'Category', zh: '類別' },
   'kv.visibility': { en: 'Visibility', zh: '可見性' },
   'kv.vimeo_id': { en: 'Vimeo Video ID / URL', zh: 'Vimeo 影片 ID / URL' },

@@ -33,6 +33,7 @@ const EMPTY_FORM: KnowledgeVideoFormData = {
   description_zh: '',
   creator_name_en: '',
   creator_name_zh: '',
+  creator_photo_url: '',
   category: 'educational',
   visibility: 'public',
   vimeo_video_id: '',
@@ -115,6 +116,7 @@ export default function KnowledgeVideosScreen() {
         description_zh: payload.description_zh.trim() || null,
         creator_name_en: payload.creator_name_en.trim() || null,
         creator_name_zh: payload.creator_name_zh.trim() || null,
+        creator_photo_url: payload.creator_photo_url.trim() || null,
         category: payload.category,
         visibility: payload.visibility,
         vimeo_video_id: payload.vimeo_video_id ? extractVimeoId(payload.vimeo_video_id) : null,
@@ -199,6 +201,7 @@ export default function KnowledgeVideosScreen() {
       description_zh: video.description_zh ?? '',
       creator_name_en: video.creator_name_en ?? '',
       creator_name_zh: video.creator_name_zh ?? '',
+      creator_photo_url: video.creator_photo_url ?? '',
       category: video.category,
       visibility: video.visibility,
       vimeo_video_id: video.vimeo_video_id ?? '',
@@ -537,6 +540,10 @@ export default function KnowledgeVideosScreen() {
               <TextInput style={styles.input} value={form.creator_name_zh} onChangeText={(v) => updateForm('creator_name_zh', v)} placeholderTextColor={Colors.textTertiary} />
             </View>
             <View style={styles.fieldGroup}>
+              <Text style={styles.label}>{t('kv.creator_photo')}</Text>
+              <TextInput style={styles.input} value={form.creator_photo_url} onChangeText={(v) => updateForm('creator_photo_url', v)} placeholder="https://..." placeholderTextColor={Colors.textTertiary} autoCapitalize="none" keyboardType="url" />
+            </View>
+            <View style={styles.fieldGroup}>
               <Text style={styles.label}>{t('kv.category')}</Text>
               <View style={styles.chipRow}>
                 {CATEGORIES.map((cat) => (
@@ -593,6 +600,15 @@ export default function KnowledgeVideosScreen() {
             <View style={styles.closeBtn} />
           </View>
           <ScrollView style={styles.modalBody} contentContainerStyle={[styles.modalBodyContent, { paddingBottom: insets.bottom + 24 }]} keyboardShouldPersistTaps="handled">
+            {pushVideoId && (() => {
+              const pushVideo = getVideoById(pushVideoId);
+              return pushVideo ? (
+                <View style={styles.pushVideoHeader}>
+                  <PlayCircle size={16} color={Colors.accent} />
+                  <Text style={styles.pushVideoTitle} numberOfLines={2}>{getVideoTitle(pushVideo)}</Text>
+                </View>
+              ) : null;
+            })()}
             <View style={styles.fieldGroup}>
               <Text style={styles.label}>{t('kv.start_date')}</Text>
               <TextInput style={styles.input} value={pushStartDate} onChangeText={setPushStartDate} placeholder="YYYY-MM-DD" placeholderTextColor={Colors.textTertiary} />
@@ -724,4 +740,6 @@ const styles = StyleSheet.create({
   saveBtn: { backgroundColor: Colors.accent, borderRadius: 12, paddingVertical: 16, alignItems: 'center', marginTop: 4 },
   saveBtnDisabled: { opacity: 0.7 },
   saveBtnText: { color: Colors.white, fontSize: 16, fontWeight: '600' as const },
+  pushVideoHeader: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: 10, backgroundColor: Colors.accentLight, borderRadius: 10, padding: 12, marginBottom: 16 },
+  pushVideoTitle: { fontSize: 14, fontWeight: '600' as const, color: Colors.accent, flex: 1 },
 });

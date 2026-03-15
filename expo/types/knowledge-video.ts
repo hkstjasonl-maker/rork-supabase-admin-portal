@@ -9,6 +9,7 @@ export interface KnowledgeVideo {
   description_zh: string | null;
   creator_name_en: string | null;
   creator_name_zh: string | null;
+  creator_photo_url: string | null;
   category: KnowledgeVideoCategory;
   visibility: KnowledgeVideoVisibility;
   vimeo_video_id: string | null;
@@ -24,6 +25,7 @@ export interface KnowledgeVideoFormData {
   description_zh: string;
   creator_name_en: string;
   creator_name_zh: string;
+  creator_photo_url: string;
   category: KnowledgeVideoCategory;
   visibility: KnowledgeVideoVisibility;
   vimeo_video_id: string;

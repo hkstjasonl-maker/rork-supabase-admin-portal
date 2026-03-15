@@ -165,6 +165,9 @@ export default function ProgramsScreen() {
           dosage_per_day: ex.dosage_per_day,
           dosage_days_per_week: ex.dosage_days_per_week,
           category: ex.category || null,
+          subtitle_url_en: ex.subtitle_url_en || null,
+          subtitle_url_zh_hant: ex.subtitle_url_zh_hant || null,
+          subtitle_url_zh_hans: ex.subtitle_url_zh_hans || null,
           sort_order: ex.sort_order,
         }));
 
@@ -227,6 +230,9 @@ export default function ProgramsScreen() {
       dosage_per_day: ex.dosage_per_day,
       dosage_days_per_week: ex.dosage_days_per_week,
       category: ex.category ?? '',
+      subtitle_url_en: ex.subtitle_url_en ?? '',
+      subtitle_url_zh_hant: ex.subtitle_url_zh_hant ?? '',
+      subtitle_url_zh_hans: ex.subtitle_url_zh_hans ?? '',
       sort_order: ex.sort_order,
     }));
 
@@ -270,6 +276,9 @@ export default function ProgramsScreen() {
       dosage_per_day: ex.dosage_per_day,
       dosage_days_per_week: ex.dosage_days_per_week,
       category: ex.category ?? '',
+      subtitle_url_en: ex.subtitle_url_en ?? '',
+      subtitle_url_zh_hant: ex.subtitle_url_zh_hant ?? '',
+      subtitle_url_zh_hans: ex.subtitle_url_zh_hans ?? '',
       sort_order: i + 1,
     }));
 

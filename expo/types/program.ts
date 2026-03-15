@@ -31,6 +31,9 @@ export interface ProgramExercise {
   dosage_per_day: number | null;
   dosage_days_per_week: number | null;
   category: string | null;
+  subtitle_url_en: string | null;
+  subtitle_url_zh_hant: string | null;
+  subtitle_url_zh_hans: string | null;
   sort_order: number;
   created_at: string;
 }
@@ -93,5 +96,8 @@ export interface ProgramBuilderExercise {
   dosage_per_day: number | null;
   dosage_days_per_week: number | null;
   category: string;
+  subtitle_url_en: string;
+  subtitle_url_zh_hant: string;
+  subtitle_url_zh_hans: string;
   sort_order: number;
 }

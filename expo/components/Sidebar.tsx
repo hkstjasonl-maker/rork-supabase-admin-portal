@@ -26,6 +26,7 @@ import {
   ImageIcon,
   Settings,
   Briefcase,
+  Flower2,
   LogOut,
   Globe,
   X,
@@ -60,6 +61,7 @@ const navItems: NavItem[] = [
   { key: 'splash-ads', route: '/splash-ads', icon: ImageIcon, translationKey: 'nav.splash_ads' },
   { key: 'therapist-settings', route: '/therapist-settings', icon: Settings, translationKey: 'nav.therapist_settings' },
   { key: 'managing-organisation', route: '/managing-organisation', icon: Briefcase, translationKey: 'nav.managing_organisation' },
+  { key: 'flower-garden', route: '/flower-garden', icon: Flower2, translationKey: 'nav.flower_garden' },
 ];
 
 function isRouteActive(pathname: string, route: string): boolean {

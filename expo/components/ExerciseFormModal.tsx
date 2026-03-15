@@ -11,7 +11,8 @@ import {
   Platform,
   ActivityIndicator,
 } from 'react-native';
-import { X } from 'lucide-react-native';
+import { X, ArrowRightLeft } from 'lucide-react-native';
+import { trad2simp } from '@/utils/trad2simp';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '@/constants/colors';
 import { useLanguage } from '@/providers/LanguageProvider';
@@ -230,7 +231,19 @@ export default function ExerciseFormModal({
           <Text style={styles.sectionLabel}>Basic Info</Text>
           {renderField(t('exercise.title_en'), titleEn, setTitleEn, { required: true })}
           {renderField(t('exercise.title_zh_hant'), titleZhHant, setTitleZhHant)}
-          {renderField(t('exercise.title_zh_hans'), titleZhHans, setTitleZhHans)}
+          <View style={styles.fieldWithConvert}>
+            <View style={styles.fieldFlex}>
+              {renderField(t('exercise.title_zh_hans'), titleZhHans, setTitleZhHans)}
+            </View>
+            <TouchableOpacity
+              style={styles.convertBtn}
+              onPress={() => setTitleZhHans(trad2simp(titleZhHant))}
+              activeOpacity={0.7}
+            >
+              <ArrowRightLeft size={12} color={Colors.accent} />
+              <Text style={styles.convertBtnText}>繁→简</Text>
+            </TouchableOpacity>
+          </View>
 
           <Text style={styles.sectionLabel}>Video</Text>
           {renderField(t('exercise.vimeo_id'), vimeoInput, setVimeoInput, { placeholder: 'https://vimeo.com/123456789' })}
@@ -244,7 +257,19 @@ export default function ExerciseFormModal({
           {renderField(t('exercise.duration'), duration, setDuration, { keyboardType: 'numeric' })}
           {renderField(t('exercise.dosage'), dosage, setDosage)}
           {renderField('Dosage (繁中)', dosageZhHant, setDosageZhHant)}
-          {renderField('Dosage (简中)', dosageZhHans, setDosageZhHans)}
+          <View style={styles.fieldWithConvert}>
+            <View style={styles.fieldFlex}>
+              {renderField('Dosage (简中)', dosageZhHans, setDosageZhHans)}
+            </View>
+            <TouchableOpacity
+              style={styles.convertBtn}
+              onPress={() => setDosageZhHans(trad2simp(dosageZhHant))}
+              activeOpacity={0.7}
+            >
+              <ArrowRightLeft size={12} color={Colors.accent} />
+              <Text style={styles.convertBtnText}>繁→简</Text>
+            </TouchableOpacity>
+          </View>
           {renderField(t('exercise.dosage_per_day'), dosagePerDay, setDosagePerDay, { keyboardType: 'numeric' })}
           {renderField(t('exercise.dosage_days_per_week'), dosageDaysPerWeek, setDosageDaysPerWeek, { keyboardType: 'numeric' })}
 
@@ -266,7 +291,19 @@ export default function ExerciseFormModal({
           <Text style={styles.sectionLabel}>Transcripts</Text>
           {renderField('Audio Transcript (EN)', transcriptEn, setTranscriptEn, { multiline: true })}
           {renderField('Audio Transcript (繁中)', transcriptZhHant, setTranscriptZhHant, { multiline: true })}
-          {renderField('Audio Transcript (简中)', transcriptZhHans, setTranscriptZhHans, { multiline: true })}
+          <View style={styles.fieldWithConvert}>
+            <View style={styles.fieldFlex}>
+              {renderField('Audio Transcript (简中)', transcriptZhHans, setTranscriptZhHans, { multiline: true })}
+            </View>
+            <TouchableOpacity
+              style={styles.convertBtn}
+              onPress={() => setTranscriptZhHans(trad2simp(transcriptZhHant))}
+              activeOpacity={0.7}
+            >
+              <ArrowRightLeft size={12} color={Colors.accent} />
+              <Text style={styles.convertBtnText}>繁→简</Text>
+            </TouchableOpacity>
+          </View>
 
           {error && (
             <View style={styles.errorContainer}>
@@ -386,6 +423,29 @@ const styles = StyleSheet.create({
   },
   saveButtonDisabled: {
     opacity: 0.7,
+  },
+  fieldWithConvert: {
+    flexDirection: 'row' as const,
+    alignItems: 'flex-start' as const,
+    gap: 8,
+  },
+  fieldFlex: {
+    flex: 1,
+  },
+  convertBtn: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 4,
+    backgroundColor: Colors.accentLight,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    marginTop: 24,
+  },
+  convertBtnText: {
+    fontSize: 11,
+    fontWeight: '600' as const,
+    color: Colors.accent,
   },
   saveButtonText: {
     color: Colors.white,

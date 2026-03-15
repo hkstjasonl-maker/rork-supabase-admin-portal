@@ -34,6 +34,7 @@ const translations: TranslationKeys = {
   'nav.therapist_settings': { en: 'Therapist Settings', zh: '治療師設定' },
   'nav.managing_organisation': { en: 'Managing Organisation', zh: '管理機構' },
   'nav.flower_garden': { en: 'Flower Garden', zh: '花田管理' },
+  'nav.marketing_draws': { en: 'Marketing Draws', zh: '行銷抽獎' },
   'nav.settings': { en: 'Settings', zh: '設定' },
 
   'dashboard.title': { en: 'Clinical Dashboard', zh: '臨床控制台' },

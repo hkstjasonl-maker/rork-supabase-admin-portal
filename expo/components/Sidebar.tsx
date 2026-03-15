@@ -27,6 +27,7 @@ import {
   Settings,
   Briefcase,
   Flower2,
+  Gift,
   LogOut,
   Globe,
   X,
@@ -62,6 +63,7 @@ const navItems: NavItem[] = [
   { key: 'therapist-settings', route: '/therapist-settings', icon: Settings, translationKey: 'nav.therapist_settings' },
   { key: 'managing-organisation', route: '/managing-organisation', icon: Briefcase, translationKey: 'nav.managing_organisation' },
   { key: 'flower-garden', route: '/flower-garden', icon: Flower2, translationKey: 'nav.flower_garden' },
+  { key: 'marketing-draws', route: '/marketing-draws', icon: Gift, translationKey: 'nav.marketing_draws' },
 ];
 
 function isRouteActive(pathname: string, route: string): boolean {

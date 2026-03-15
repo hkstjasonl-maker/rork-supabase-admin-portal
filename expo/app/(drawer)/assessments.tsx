@@ -15,7 +15,7 @@ import {
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Plus, Pencil, Trash2, X, CheckSquare, ClipboardList, Send, FileText,
-  ChevronDown, Eye, AlertTriangle,
+  ChevronDown, Eye, AlertTriangle, TrendingUp, TrendingDown, Minus,
 } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '@/constants/colors';
@@ -36,6 +36,60 @@ import type {
   ScoringConfig,
 } from '@/types/assessment';
 import type { Patient } from '@/types/patient';
+
+function findQuestionText(items: any[] | undefined | null, key: string, lang: string): string {
+  if (!items || !Array.isArray(items)) return '';
+  for (const item of items) {
+    if (item.number != null && String(item.number) === key) {
+      return lang === 'zh' ? (item.text_zh || item.text_en || '') : (item.text_en || item.text_zh || '');
+    }
+    if (item.id && item.id === key) {
+      return lang === 'zh' ? (item.text_zh || item.category_zh || item.text_en || item.category_en || '') : (item.text_en || item.category_en || item.text_zh || item.category_zh || '');
+    }
+    if (item.items && Array.isArray(item.items)) {
+      for (const sub of item.items) {
+        if (sub.item_number != null && String(sub.item_number) === key) return lang === 'zh' ? (sub.text_zh || sub.text_en || '') : (sub.text_en || sub.text_zh || '');
+        if (sub.item_id && sub.item_id === key) return lang === 'zh' ? (sub.text_zh || sub.text_en || '') : (sub.text_en || sub.text_zh || '');
+      }
+    }
+    if (item.assessment_areas && Array.isArray(item.assessment_areas)) {
+      for (const area of item.assessment_areas) {
+        if (area.items) for (const sub of area.items) {
+          if (sub.item_id && sub.item_id === key) return lang === 'zh' ? (sub.text_zh || sub.text_en || '') : (sub.text_en || sub.text_zh || '');
+        }
+      }
+    }
+  }
+  return '';
+}
+
+function getScoreColor(value: number, scoringConfig: any): string {
+  const sMin = scoringConfig?.scale_min ?? scoringConfig?.scale_per_item?.min ?? 0;
+  const sMax = scoringConfig?.scale_max ?? scoringConfig?.scale_per_item?.max ?? 4;
+  const ratio = (value - sMin) / (sMax - sMin);
+  if (ratio >= 0.75) return '#d94f4f';
+  if (ratio >= 0.5) return '#e07a3a';
+  if (ratio >= 0.25) return '#2c2c2c';
+  return '#5b8a72';
+}
+
+function ComparisonBadge({ current, previous }: { current: number | null; previous: number | null }) {
+  if (current == null || previous == null) return null;
+  const diff = current - previous;
+  if (diff === 0) return (
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, backgroundColor: '#f3f0ec' }}>
+      <Minus size={10} color="#7a7a7a" />
+      <Text style={{ fontSize: 11, fontWeight: '600' as const, color: '#7a7a7a' }}>Same</Text>
+    </View>
+  );
+  const isUp = diff > 0;
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, backgroundColor: isUp ? '#fce8e8' : '#e8f0eb' }}>
+      {isUp ? <TrendingUp size={10} color="#d94f4f" /> : <TrendingDown size={10} color="#5b8a72" />}
+      <Text style={{ fontSize: 11, fontWeight: '600' as const, color: isUp ? '#d94f4f' : '#5b8a72' }}>{isUp ? '+' : ''}{diff}</Text>
+    </View>
+  );
+}
 
 type TabKey = 'clinical' | 'templates' | 'assigned' | 'responses';
 
@@ -80,6 +134,8 @@ export default function AssessmentsScreen() {
   const [responseModalVisible, setResponseModalVisible] = useState(false);
   const [viewingSubmission, setViewingSubmission] = useState<AssessmentSubmission | null>(null);
   const [viewingQuestionnaireResponse, setViewingQuestionnaireResponse] = useState<QuestionnaireResponse | null>(null);
+  const [previousSubmission, setPreviousSubmission] = useState<AssessmentSubmission | null>(null);
+  const [previousQResponse, setPreviousQResponse] = useState<QuestionnaireResponse | null>(null);
 
   const toolsQuery = useQuery({
     queryKey: ['assessment_library'],
@@ -441,25 +497,56 @@ export default function AssessmentsScreen() {
     ]);
   }, [t, deleteSubmissionMutation]);
 
-  const handleViewClinicalResponse = useCallback((sub: AssessmentSubmission) => {
+  const handleViewClinicalResponse = useCallback(async (sub: AssessmentSubmission) => {
     setViewingSubmission(sub);
     setViewingQuestionnaireResponse(null);
+    setPreviousSubmission(null);
+    setPreviousQResponse(null);
+    if (sub.assessment_id && sub.patient_id) {
+      try {
+        const { data } = await supabase
+          .from('assessment_submissions')
+          .select('*')
+          .eq('patient_id', sub.patient_id)
+          .eq('assessment_id', sub.assessment_id)
+          .eq('status', 'completed')
+          .lt('completed_at', sub.completed_at ?? sub.created_at)
+          .order('completed_at', { ascending: false })
+          .limit(1);
+        if (data && data.length > 0) setPreviousSubmission(data[0]);
+      } catch (e) { console.warn('Failed to fetch previous:', e); }
+    }
     setResponseModalVisible(true);
   }, []);
 
-  const handleViewCustomResponse = useCallback((resp: QuestionnaireResponse) => {
+  const handleViewCustomResponse = useCallback(async (resp: QuestionnaireResponse) => {
     setViewingQuestionnaireResponse(resp);
     setViewingSubmission(null);
+    setPreviousSubmission(null);
+    setPreviousQResponse(null);
+    if (resp.template_id && resp.patient_id) {
+      try {
+        const { data } = await supabase
+          .from('questionnaire_responses')
+          .select('*')
+          .eq('patient_id', resp.patient_id)
+          .eq('template_id', resp.template_id)
+          .lt('completed_at', resp.completed_at)
+          .order('completed_at', { ascending: false })
+          .limit(1);
+        if (data && data.length > 0) setPreviousQResponse(data[0]);
+      } catch (e) { console.warn('Failed to fetch previous:', e); }
+    }
     setResponseModalVisible(true);
   }, []);
 
   const handleViewResponse = useCallback((item: typeof completedResponses[0]) => {
     if (item.type === 'clinical') {
       const sub = submissions.find((s) => s.id === item.id);
-      if (sub) handleViewClinicalResponse(sub);
+      if (sub) void handleViewClinicalResponse(sub);
     } else {
       const resp = qResponses.find((r) => r.id === item.id);
-      if (resp) handleViewCustomResponse(resp);
+      if (resp) void handleViewCustomResponse(resp);
     }
   }, [submissions, qResponses, handleViewClinicalResponse, handleViewCustomResponse]);
 
@@ -522,6 +609,10 @@ export default function AssessmentsScreen() {
       const domains = scoringConfig?.domains ?? [];
       const subscaleScores = viewingSubmission.subscale_scores ?? {};
       const responses = viewingSubmission.responses ?? {};
+      const prevResponses = previousSubmission?.responses ?? {};
+      const prevSubscaleScores = previousSubmission?.subscale_scores ?? {};
+      const maxTotal = scoringConfig?.max_total;
+      const lang = language;
 
       return (
         <ScrollView style={styles.modalBody} contentContainerStyle={[styles.modalBodyContent, { paddingBottom: insets.bottom + 24 }]}>
@@ -529,16 +620,27 @@ export default function AssessmentsScreen() {
             <Text style={styles.responseAssessName}>
               {tool ? (language === 'zh' && tool.name_zh ? tool.name_zh : tool.name_en) : '—'}
             </Text>
+            <Text style={styles.responsePatientLabel}>{getPatientName(viewingSubmission.patient_id)}</Text>
             <View style={styles.scoreCard}>
               <Text style={styles.scoreBig}>{viewingSubmission.total_score ?? '—'}</Text>
+              {maxTotal != null && <Text style={styles.scoreMax}>/ {maxTotal}</Text>}
               <Text style={styles.scoreLabel}>{t('assess.total_score')}</Text>
             </View>
+            {previousSubmission && (
+              <View style={styles.comparisonRow}>
+                <Text style={styles.comparisonLabel}>vs. previous ({new Date(previousSubmission.completed_at ?? previousSubmission.created_at).toLocaleDateString()})</Text>
+                <ComparisonBadge current={viewingSubmission.total_score ?? null} previous={previousSubmission.total_score ?? null} />
+              </View>
+            )}
             {viewingSubmission.severity_rating && (
               <View style={[styles.severityBadge, currentSeverity?.color ? { backgroundColor: currentSeverity.color + '22' } : {}]}>
                 <Text style={[styles.severityText, currentSeverity?.color ? { color: currentSeverity.color } : {}]}>
                   {viewingSubmission.severity_rating}
                 </Text>
               </View>
+            )}
+            {(viewingSubmission as any).language && (
+              <Text style={styles.languageNote}>Language: {(viewingSubmission as any).language}</Text>
             )}
           </View>
 
@@ -564,39 +666,52 @@ export default function AssessmentsScreen() {
             <View style={styles.subscaleSection}>
               <Text style={styles.sectionLabel}>{t('assess.subscale_scores')}</Text>
               <View style={styles.subscaleGrid}>
-                {domains.map((d) => (
-                  <View key={d.key} style={styles.subscaleItem}>
-                    <Text style={styles.subscaleScore}>{subscaleScores[d.key] ?? '—'}</Text>
-                    <Text style={styles.subscaleLabel}>{language === 'zh' && d.label_zh ? d.label_zh : d.label_en}</Text>
-                  </View>
-                ))}
+                {domains.map((d) => {
+                  const currentVal = subscaleScores[d.key] ?? null;
+                  const prevVal = prevSubscaleScores[d.key] ?? null;
+                  return (
+                    <View key={d.key} style={styles.subscaleItem}>
+                      <Text style={styles.subscaleScore}>{currentVal ?? '—'}</Text>
+                      <Text style={styles.subscaleLabel}>{language === 'zh' && d.label_zh ? d.label_zh : d.label_en}</Text>
+                      {previousSubmission && <ComparisonBadge current={currentVal} previous={prevVal} />}
+                    </View>
+                  );
+                })}
               </View>
             </View>
           )}
 
-          {items.length > 0 && (
+          {Object.keys(responses).length > 0 && (
             <View style={styles.itemsSection}>
               <Text style={styles.sectionLabel}>{t('assess.item_responses')}</Text>
-              {items.map((item) => {
-                const responseVal = responses[item.id] ?? responses[String(item.number)];
-                const scoreNum = typeof responseVal === 'number' ? responseVal : parseInt(String(responseVal), 10);
-                const maxScore = item.max_score ?? 4;
-                const ratio = !isNaN(scoreNum) ? scoreNum / maxScore : 0;
-                const scoreColor = ratio >= 0.75 ? Colors.danger : ratio >= 0.5 ? Colors.accent : Colors.green;
+              {Object.entries(responses).map(([key, value]) => {
+                const qText = findQuestionText(items as any[], key, lang);
+                const scoreNum = typeof value === 'number' ? value : parseInt(String(value), 10);
+                const scoreColor = !isNaN(scoreNum) ? getScoreColor(scoreNum, scoringConfig) : Colors.text;
+                const prevVal = prevResponses[key];
+                const prevNum = prevVal != null ? (typeof prevVal === 'number' ? prevVal : parseInt(String(prevVal), 10)) : null;
                 return (
-                  <View key={item.id} style={styles.itemRow}>
+                  <View key={key} style={styles.itemRow}>
                     <View style={[styles.itemScoreCircle, { borderColor: scoreColor }]}>
-                      <Text style={[styles.itemScoreText, { color: scoreColor }]}>{responseVal ?? '—'}</Text>
+                      <Text style={[styles.itemScoreText, { color: scoreColor }]}>{value ?? '—'}</Text>
                     </View>
                     <View style={styles.itemTextWrap}>
-                      <Text style={styles.itemNumber}>#{item.number}</Text>
-                      <Text style={styles.itemText} numberOfLines={2}>
-                        {language === 'zh' && item.text_zh ? item.text_zh : item.text_en}
-                      </Text>
+                      <View style={styles.itemHeaderRow}>
+                        <Text style={styles.itemNumber}>Item {key}</Text>
+                        {prevNum != null && !isNaN(scoreNum) && <ComparisonBadge current={scoreNum} previous={prevNum} />}
+                      </View>
+                      {qText ? <Text style={styles.itemText} numberOfLines={3}>{qText}</Text>
+                        : <Text style={styles.itemTextMissing}>(Question text not available)</Text>}
                     </View>
                   </View>
                 );
               })}
+            </View>
+          )}
+
+          {viewingSubmission.completed_at && (
+            <View style={styles.dateInfoSection}>
+              <Text style={styles.dateInfoText}>{t('assess.completed_date')}: {new Date(viewingSubmission.completed_at).toLocaleDateString()} {new Date(viewingSubmission.completed_at).toLocaleTimeString()}</Text>
             </View>
           )}
 
@@ -614,40 +729,78 @@ export default function AssessmentsScreen() {
       const tpl = getTemplateById(viewingQuestionnaireResponse.template_id);
       const questions = tpl?.questions ?? [];
       const responses = viewingQuestionnaireResponse.responses ?? {};
+      const prevResponses = previousQResponse?.responses ?? {};
 
       return (
         <ScrollView style={styles.modalBody} contentContainerStyle={[styles.modalBodyContent, { paddingBottom: insets.bottom + 24 }]}>
           <View style={styles.responseHeader}>
             <Text style={styles.responseAssessName}>{tpl?.name ?? '—'}</Text>
+            <Text style={styles.responsePatientLabel}>{getPatientName(viewingQuestionnaireResponse.patient_id)}</Text>
             {viewingQuestionnaireResponse.total_score != null && (
               <View style={styles.scoreCard}>
                 <Text style={styles.scoreBig}>{viewingQuestionnaireResponse.total_score}</Text>
                 <Text style={styles.scoreLabel}>{t('assess.total_score')}</Text>
               </View>
             )}
+            {previousQResponse && (
+              <View style={styles.comparisonRow}>
+                <Text style={styles.comparisonLabel}>vs. previous ({new Date(previousQResponse.completed_at).toLocaleDateString()})</Text>
+                <ComparisonBadge current={viewingQuestionnaireResponse.total_score ?? null} previous={previousQResponse.total_score ?? null} />
+              </View>
+            )}
           </View>
+
+          {tpl?.description_en && (
+            <View style={styles.interpretSection}>
+              <Text style={styles.interpretText}>
+                {language === 'zh' && tpl.description_zh_hant ? tpl.description_zh_hant : tpl.description_en}
+              </Text>
+            </View>
+          )}
 
           {questions.length > 0 && (
             <View style={styles.itemsSection}>
               <Text style={styles.sectionLabel}>{t('assess.question_responses')}</Text>
               {questions.map((q, idx) => {
                 const responseVal = responses[q.id];
+                const scoreNum = typeof responseVal === 'number' ? responseVal : parseInt(String(responseVal), 10);
+                const scoreColor = !isNaN(scoreNum) ? getScoreColor(scoreNum, null) : Colors.accent;
+                const prevVal = prevResponses[q.id];
+                const prevNum = prevVal != null ? (typeof prevVal === 'number' ? prevVal : parseInt(String(prevVal), 10)) : null;
+                const qText = q.text_en || (q as any).en || '';
+                const qTextZh = q.text_zh_hant || (q as any).zh_hant || '';
+                const displayText = language === 'zh' && qTextZh ? qTextZh : qText;
+                const choiceLabel = q.type === 'single_choice' && q.choices
+                  ? q.choices.find((c) => c.value === String(responseVal))
+                  : null;
                 return (
                   <View key={q.id} style={styles.itemRow}>
-                    <View style={[styles.itemScoreCircle, { borderColor: Colors.accent }]}>
-                      <Text style={[styles.itemScoreText, { color: Colors.accent }]}>{responseVal ?? '—'}</Text>
+                    <View style={[styles.itemScoreCircle, { borderColor: scoreColor }]}>
+                      <Text style={[styles.itemScoreText, { color: scoreColor }]}>{responseVal ?? '—'}</Text>
                     </View>
                     <View style={styles.itemTextWrap}>
-                      <Text style={styles.itemNumber}>Q{idx + 1}</Text>
-                      <Text style={styles.itemText} numberOfLines={2}>
-                        {language === 'zh' && q.text_zh_hant ? q.text_zh_hant : q.text_en}
-                      </Text>
+                      <View style={styles.itemHeaderRow}>
+                        <Text style={styles.itemNumber}>Q{idx + 1}</Text>
+                        {prevNum != null && !isNaN(scoreNum) && <ComparisonBadge current={scoreNum} previous={prevNum} />}
+                      </View>
+                      {displayText ? <Text style={styles.itemText} numberOfLines={3}>{displayText}</Text>
+                        : <Text style={styles.itemTextMissing}>(Question text not available)</Text>}
+                      {choiceLabel && (
+                        <Text style={styles.choiceLabel}>
+                          {language === 'zh' && choiceLabel.label_zh_hant ? choiceLabel.label_zh_hant : choiceLabel.label_en}
+                        </Text>
+                      )}
                     </View>
                   </View>
                 );
               })}
             </View>
           )}
+
+          <View style={styles.dateInfoSection}>
+            <Text style={styles.dateInfoText}>{t('assess.completed_date')}: {new Date(viewingQuestionnaireResponse.completed_at).toLocaleDateString()} {new Date(viewingQuestionnaireResponse.completed_at).toLocaleTimeString()}</Text>
+            {tpl?.scoring_method && <Text style={styles.dateInfoText}>Scoring: {tpl.scoring_method}</Text>}
+          </View>
         </ScrollView>
       );
     }
@@ -1370,4 +1523,14 @@ const styles = StyleSheet.create({
   referenceSection: { backgroundColor: Colors.inputBg, borderRadius: 10, padding: 14, marginTop: 8 },
   referenceLabel: { fontSize: 11, fontWeight: '700' as const, color: Colors.textTertiary, textTransform: 'uppercase' as const, marginBottom: 4, letterSpacing: 0.5 },
   referenceText: { fontSize: 12, color: Colors.textSecondary, lineHeight: 18, fontStyle: 'italic' as const },
+  responsePatientLabel: { fontSize: 13, color: Colors.textSecondary, marginBottom: 12 },
+  scoreMax: { fontSize: 14, color: Colors.textTertiary, marginTop: -4 },
+  languageNote: { fontSize: 11, color: Colors.textTertiary, marginTop: 6 },
+  comparisonRow: { marginTop: 12, alignItems: 'center' as const, gap: 4 },
+  comparisonLabel: { fontSize: 11, color: Colors.textTertiary },
+  itemHeaderRow: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: 8, marginBottom: 2 },
+  itemTextMissing: { fontSize: 13, color: Colors.textTertiary, fontStyle: 'italic' as const, marginTop: 2 },
+  choiceLabel: { fontSize: 11, color: Colors.green, marginTop: 2, fontWeight: '500' as const },
+  dateInfoSection: { backgroundColor: Colors.inputBg, borderRadius: 10, padding: 12, marginTop: 8, marginBottom: 8, gap: 4 },
+  dateInfoText: { fontSize: 12, color: Colors.textSecondary },
 });

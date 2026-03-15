@@ -1,0 +1,9 @@
+{
+  "apps": [
+    {
+      "name": "SLP Jason Admin",
+      "path": "expo",
+      "framework": "react-native"
+    }
+  ]
+}

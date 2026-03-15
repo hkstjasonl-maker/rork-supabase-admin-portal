@@ -201,11 +201,70 @@ export default function AssessmentsScreen() {
     },
   });
 
+  const questionnaireAssignmentsQuery = useQuery({
+    queryKey: ['questionnaire_assignments'],
+    queryFn: async () => {
+      console.log('[Assessments] Fetching questionnaire assignments');
+      const { data, error } = await supabase
+        .from('questionnaire_assignments')
+        .select('*')
+        .order('assigned_date', { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as Array<{
+        id: string;
+        patient_id: string;
+        questionnaire_template_id: string;
+        due_date: string | null;
+        assigned_date: string;
+        status: string;
+        created_at: string;
+      }>;
+    },
+  });
+
   const patients = useMemo(() => patientsQuery.data ?? [], [patientsQuery.data]);
   const tools = useMemo(() => toolsQuery.data ?? [], [toolsQuery.data]);
   const templates = useMemo(() => templatesQuery.data ?? [], [templatesQuery.data]);
   const submissions = useMemo(() => submissionsQuery.data ?? [], [submissionsQuery.data]);
   const qResponses = useMemo(() => questionnaireResponsesQuery.data ?? [], [questionnaireResponsesQuery.data]);
+  const qAssignments = useMemo(() => questionnaireAssignmentsQuery.data ?? [], [questionnaireAssignmentsQuery.data]);
+
+  type MergedAssignment = {
+    id: string;
+    patient_id: string;
+    source: 'clinical' | 'custom';
+    assessment_id: string | null;
+    template_id: string | null;
+    scheduled_date: string | null;
+    status: string;
+    created_at: string;
+  };
+
+  const mergedAssignments = useMemo<MergedAssignment[]>(() => {
+    const clinical: MergedAssignment[] = submissions.map((s) => ({
+      id: s.id,
+      patient_id: s.patient_id,
+      source: 'clinical' as const,
+      assessment_id: s.assessment_id,
+      template_id: s.template_id ?? null,
+      scheduled_date: s.scheduled_date ?? null,
+      status: s.status,
+      created_at: s.created_at,
+    }));
+    const custom: MergedAssignment[] = qAssignments.map((a) => ({
+      id: a.id,
+      patient_id: a.patient_id,
+      source: 'custom' as const,
+      assessment_id: null,
+      template_id: a.questionnaire_template_id,
+      scheduled_date: a.due_date ?? null,
+      status: a.status,
+      created_at: a.created_at ?? a.assigned_date,
+    }));
+    return [...clinical, ...custom].sort(
+      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    );
+  }, [submissions, qAssignments]);
 
   const completedResponses = useMemo(() => {
     const clinicalCompleted = submissions
@@ -315,17 +374,30 @@ export default function AssessmentsScreen() {
 
   const assignMutation = useMutation({
     mutationFn: async (payload: { patient_id: string; assessment_id: string | null; template_id: string | null; scheduled_date: string | null }) => {
-      const { error } = await supabase.from('assessment_submissions').insert({
-        patient_id: payload.patient_id,
-        assessment_id: payload.assessment_id,
-        template_id: payload.template_id,
-        scheduled_date: payload.scheduled_date || null,
-        status: 'pending',
-      });
-      if (error) throw error;
+      const today = new Date().toISOString().split('T')[0];
+      if (payload.assessment_id) {
+        const { error } = await supabase.from('assessment_submissions').insert({
+          patient_id: payload.patient_id,
+          assessment_id: payload.assessment_id,
+          scheduled_date: payload.scheduled_date || null,
+          status: 'pending',
+          language: 'en',
+        });
+        if (error) throw error;
+      } else if (payload.template_id) {
+        const { error } = await supabase.from('questionnaire_assignments').insert({
+          patient_id: payload.patient_id,
+          questionnaire_template_id: payload.template_id,
+          due_date: payload.scheduled_date || null,
+          assigned_date: today,
+          status: 'pending',
+        });
+        if (error) throw error;
+      }
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['assessment_submissions'] });
+      void queryClient.invalidateQueries({ queryKey: ['questionnaire_assignments'] });
       setAssignModalVisible(false);
       resetAssignForm();
     },
@@ -338,6 +410,14 @@ export default function AssessmentsScreen() {
       if (error) throw error;
     },
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['assessment_submissions'] }),
+  });
+
+  const deleteQAssignmentMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from('questionnaire_assignments').delete().eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['questionnaire_assignments'] }),
   });
 
   const resetAssignForm = useCallback(() => {
@@ -490,12 +570,21 @@ export default function AssessmentsScreen() {
     });
   }, [assignPatientId, assignAssessmentId, assignTemplateId, assignDate, assignMutation]);
 
-  const handleDeleteSubmission = useCallback((sub: AssessmentSubmission) => {
+  const handleDeleteMergedAssignment = useCallback((item: MergedAssignment) => {
     Alert.alert(t('assess.delete_assignment'), t('assess.delete_assignment_confirm'), [
       { text: t('common.cancel'), style: 'cancel' },
-      { text: t('common.delete'), style: 'destructive', onPress: () => deleteSubmissionMutation.mutate(sub.id) },
+      {
+        text: t('common.delete'), style: 'destructive',
+        onPress: () => {
+          if (item.source === 'clinical') {
+            deleteSubmissionMutation.mutate(item.id);
+          } else {
+            deleteQAssignmentMutation.mutate(item.id);
+          }
+        },
+      },
     ]);
-  }, [t, deleteSubmissionMutation]);
+  }, [t, deleteSubmissionMutation, deleteQAssignmentMutation]);
 
   const handleViewClinicalResponse = useCallback(async (sub: AssessmentSubmission) => {
     setViewingSubmission(sub);
@@ -814,7 +903,8 @@ export default function AssessmentsScreen() {
     void patientsQuery.refetch();
     void submissionsQuery.refetch();
     void questionnaireResponsesQuery.refetch();
-  }, [toolsQuery, templatesQuery, patientsQuery, submissionsQuery, questionnaireResponsesQuery]);
+    void questionnaireAssignmentsQuery.refetch();
+  }, [toolsQuery, templatesQuery, patientsQuery, submissionsQuery, questionnaireResponsesQuery, questionnaireAssignmentsQuery]);
 
   return (
     <View style={styles.container}>
@@ -975,41 +1065,55 @@ export default function AssessmentsScreen() {
               </TouchableOpacity>
             </View>
 
-            {submissionsQuery.isLoading ? (
+            {(submissionsQuery.isLoading || questionnaireAssignmentsQuery.isLoading) ? (
               <View style={styles.centered}>
                 <ActivityIndicator size="large" color={Colors.accent} />
               </View>
-            ) : submissions.length === 0 ? (
+            ) : mergedAssignments.length === 0 ? (
               <View style={styles.centered}>
                 <Send size={40} color={Colors.textTertiary} />
                 <Text style={styles.emptyText}>{t('assess.no_assignments')}</Text>
               </View>
             ) : (
-              submissions.map((sub) => {
-                const isPending = sub.status === 'pending';
+              mergedAssignments.map((item) => {
+                const isPending = item.status === 'pending';
                 return (
-                  <View key={sub.id} style={styles.assignCard}>
+                  <View key={`${item.source}-${item.id}`} style={styles.assignCard}>
                     <View style={styles.assignInfo}>
-                      <Text style={styles.assignPatient}>{getPatientName(sub.patient_id)}</Text>
+                      <Text style={styles.assignPatient}>{getPatientName(item.patient_id)}</Text>
                       <Text style={styles.assignAssessment} numberOfLines={1}>
-                        {sub.assessment_id ? getAssessmentName(sub.assessment_id) : getTemplateName(sub.template_id)}
+                        {item.assessment_id ? getAssessmentName(item.assessment_id) : getTemplateName(item.template_id)}
                       </Text>
-                      {sub.scheduled_date && (
-                        <Text style={styles.assignDate}>{sub.scheduled_date}</Text>
-                      )}
-                      <View style={[styles.statusBadge, isPending ? styles.statusPending : styles.statusCompleted]}>
-                        <Text style={[styles.statusText, isPending ? styles.statusPendingText : styles.statusCompletedText]}>
-                          {isPending ? t('assess.status_pending') : t('assess.status_completed')}
-                        </Text>
+                      <View style={styles.assignMetaRow}>
+                        <View style={[styles.sourceTypeBadge, item.source === 'clinical' ? styles.sourceTypeClinical : styles.sourceTypeCustom]}>
+                          <Text style={[styles.sourceTypeBadgeText, item.source === 'clinical' ? styles.sourceTypeClinicalText : styles.sourceTypeCustomText]}>
+                            {item.source === 'clinical' ? t('assess.clinical') : t('assess.custom')}
+                          </Text>
+                        </View>
+                        <View style={[styles.statusBadge, isPending ? styles.statusPending : styles.statusCompleted]}>
+                          <Text style={[styles.statusText, isPending ? styles.statusPendingText : styles.statusCompletedText]}>
+                            {isPending ? t('assess.status_pending') : t('assess.status_completed')}
+                          </Text>
+                        </View>
                       </View>
+                      {item.scheduled_date && (
+                        <Text style={styles.assignDate}>{item.scheduled_date}</Text>
+                      )}
                     </View>
                     <View style={styles.assignActions}>
-                      {!isPending && (
-                        <TouchableOpacity onPress={() => handleViewClinicalResponse(sub)} style={styles.viewBtn} activeOpacity={0.7}>
+                      {item.source === 'clinical' && !isPending && (
+                        <TouchableOpacity
+                          onPress={() => {
+                            const sub = submissions.find((s) => s.id === item.id);
+                            if (sub) void handleViewClinicalResponse(sub);
+                          }}
+                          style={styles.viewBtn}
+                          activeOpacity={0.7}
+                        >
                           <Eye size={14} color={Colors.accent} />
                         </TouchableOpacity>
                       )}
-                      <TouchableOpacity onPress={() => handleDeleteSubmission(sub)} style={styles.iconBtn}>
+                      <TouchableOpacity onPress={() => handleDeleteMergedAssignment(item)} style={styles.iconBtn}>
                         <Trash2 size={15} color={Colors.danger} />
                       </TouchableOpacity>
                     </View>
@@ -1354,6 +1458,38 @@ export default function AssessmentsScreen() {
             <View style={styles.fieldGroup}>
               <Text style={styles.label}>{t('assess.scheduled_date')}</Text>
               <TextInput style={styles.input} value={assignDate} onChangeText={setAssignDate} placeholder="YYYY-MM-DD" placeholderTextColor={Colors.textTertiary} />
+              <View style={styles.dateQuickRow}>
+                <TouchableOpacity
+                  onPress={() => setAssignDate(new Date().toISOString().split('T')[0])}
+                  style={styles.dateQuickBtn}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.dateQuickBtnText}>Today</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => { const d = new Date(); d.setDate(d.getDate() + 7); setAssignDate(d.toISOString().split('T')[0]); }}
+                  style={styles.dateQuickBtnGreen}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.dateQuickBtnGreenText}>+7 days</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => { const d = new Date(); d.setDate(d.getDate() + 14); setAssignDate(d.toISOString().split('T')[0]); }}
+                  style={styles.dateQuickBtnNeutral}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.dateQuickBtnNeutralText}>+14 days</Text>
+                </TouchableOpacity>
+                {assignDate ? (
+                  <TouchableOpacity
+                    onPress={() => setAssignDate('')}
+                    style={styles.dateQuickBtnClear}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.dateQuickBtnClearText}>Clear</Text>
+                  </TouchableOpacity>
+                ) : null}
+              </View>
             </View>
 
             <TouchableOpacity style={[styles.saveBtn, assignMutation.isPending && styles.saveBtnDisabled]} onPress={handleConfirmAssign} disabled={assignMutation.isPending} activeOpacity={0.8}>
@@ -1533,4 +1669,20 @@ const styles = StyleSheet.create({
   choiceLabel: { fontSize: 11, color: Colors.green, marginTop: 2, fontWeight: '500' as const },
   dateInfoSection: { backgroundColor: Colors.inputBg, borderRadius: 10, padding: 12, marginTop: 8, marginBottom: 8, gap: 4 },
   dateInfoText: { fontSize: 12, color: Colors.textSecondary },
+  assignMetaRow: { flexDirection: 'row', gap: 6, alignItems: 'center', marginTop: 4 },
+  sourceTypeBadge: { paddingHorizontal: 7, paddingVertical: 2, borderRadius: 5 },
+  sourceTypeClinical: { backgroundColor: '#e0eef8' },
+  sourceTypeCustom: { backgroundColor: '#f0e8f5' },
+  sourceTypeBadgeText: { fontSize: 9, fontWeight: '700' as const, textTransform: 'uppercase' as const },
+  sourceTypeClinicalText: { color: '#3b7dc4' },
+  sourceTypeCustomText: { color: '#8b5cc4' },
+  dateQuickRow: { flexDirection: 'row', gap: 8, marginTop: 8, flexWrap: 'wrap' },
+  dateQuickBtn: { backgroundColor: Colors.accentLight, paddingHorizontal: 12, paddingVertical: 7, borderRadius: 8 },
+  dateQuickBtnText: { fontSize: 12, fontWeight: '600' as const, color: Colors.accent },
+  dateQuickBtnGreen: { backgroundColor: Colors.greenLight, paddingHorizontal: 12, paddingVertical: 7, borderRadius: 8 },
+  dateQuickBtnGreenText: { fontSize: 12, fontWeight: '600' as const, color: Colors.green },
+  dateQuickBtnNeutral: { backgroundColor: Colors.borderLight, paddingHorizontal: 12, paddingVertical: 7, borderRadius: 8 },
+  dateQuickBtnNeutralText: { fontSize: 12, fontWeight: '600' as const, color: Colors.textSecondary },
+  dateQuickBtnClear: { backgroundColor: Colors.dangerLight, paddingHorizontal: 12, paddingVertical: 7, borderRadius: 8 },
+  dateQuickBtnClearText: { fontSize: 12, fontWeight: '600' as const, color: Colors.danger },
 });

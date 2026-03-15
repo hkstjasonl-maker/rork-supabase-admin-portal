@@ -12,7 +12,7 @@ import {
   ActivityIndicator,
   FlatList,
 } from 'react-native';
-import { X, Plus, Search, Trash2, ChevronUp, ChevronDown } from 'lucide-react-native';
+import { X, Plus, Search, Trash2, ChevronUp, ChevronDown, GripVertical } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQuery } from '@tanstack/react-query';
 import { Colors } from '@/constants/colors';
@@ -61,6 +61,9 @@ export default function ProgramBuilderModal({
   const [remarks, setRemarks] = useState('');
   const [exercises, setExercises] = useState<ProgramBuilderExercise[]>([]);
   const [libSearch, setLibSearch] = useState('');
+  const [jumpModalVisible, setJumpModalVisible] = useState(false);
+  const [jumpTargetIndex, setJumpTargetIndex] = useState<number | null>(null);
+  const [jumpPosition, setJumpPosition] = useState('');
 
   const libraryQuery = useQuery({
     queryKey: ['exercises'],
@@ -157,6 +160,27 @@ export default function ProgramBuilderModal({
     setExercises((prev) =>
       prev.map((e) => (e.temp_id === tempId ? { ...e, [field]: value } : e))
     );
+  }, []);
+
+  const handleJumpToPosition = useCallback(() => {
+    if (jumpTargetIndex == null) return;
+    const pos = parseInt(jumpPosition, 10);
+    if (isNaN(pos) || pos < 1 || pos > exercises.length) return;
+    const targetPos = pos - 1;
+    if (targetPos === jumpTargetIndex) { setJumpModalVisible(false); return; }
+    setExercises((prev) => {
+      const updated = [...prev];
+      const [item] = updated.splice(jumpTargetIndex, 1);
+      updated.splice(targetPos, 0, item);
+      return updated.map((e, i) => ({ ...e, sort_order: i + 1 }));
+    });
+    setJumpModalVisible(false);
+  }, [jumpTargetIndex, jumpPosition, exercises.length]);
+
+  const openJumpModal = useCallback((index: number) => {
+    setJumpTargetIndex(index);
+    setJumpPosition(String(index + 1));
+    setJumpModalVisible(true);
   }, []);
 
   const handleSave = useCallback(() => {
@@ -303,26 +327,37 @@ export default function ProgramBuilderModal({
             </View>
           ) : (
             exercises.map((ex, index) => (
-              <View key={ex.temp_id} style={styles.programExCard}>
+              <TouchableOpacity
+                key={ex.temp_id}
+                style={styles.programExCard}
+                onLongPress={() => openJumpModal(index)}
+                activeOpacity={0.85}
+                delayLongPress={400}
+              >
                 <View style={styles.programExHeader}>
-                  <Text style={styles.programExOrder}>{ex.sort_order}</Text>
+                  <View style={styles.gripHandle}>
+                    <GripVertical size={16} color={Colors.textTertiary} />
+                  </View>
+                  <TouchableOpacity onLongPress={() => openJumpModal(index)} delayLongPress={400} activeOpacity={0.7}>
+                    <Text style={styles.programExOrder}>{ex.sort_order}</Text>
+                  </TouchableOpacity>
                   <Text style={styles.programExTitle} numberOfLines={1}>{getExTitle(ex)}</Text>
                   <View style={styles.programExActions}>
                     <TouchableOpacity
                       onPress={() => handleMoveUp(index)}
-                      style={styles.moveBtn}
+                      style={[styles.moveBtn, index === 0 ? styles.moveBtnDisabled : styles.moveBtnEnabled]}
                       disabled={index === 0}
                       activeOpacity={0.7}
                     >
-                      <ChevronUp size={16} color={index === 0 ? Colors.textTertiary : Colors.text} />
+                      <ChevronUp size={18} color={index === 0 ? Colors.textTertiary : Colors.accent} />
                     </TouchableOpacity>
                     <TouchableOpacity
                       onPress={() => handleMoveDown(index)}
-                      style={styles.moveBtn}
+                      style={[styles.moveBtn, index === exercises.length - 1 ? styles.moveBtnDisabled : styles.moveBtnEnabled]}
                       disabled={index === exercises.length - 1}
                       activeOpacity={0.7}
                     >
-                      <ChevronDown size={16} color={index === exercises.length - 1 ? Colors.textTertiary : Colors.text} />
+                      <ChevronDown size={18} color={index === exercises.length - 1 ? Colors.textTertiary : Colors.accent} />
                     </TouchableOpacity>
                     <TouchableOpacity
                       onPress={() => handleRemoveExercise(ex.temp_id)}
@@ -368,11 +403,40 @@ export default function ProgramBuilderModal({
                     />
                   </View>
                 </View>
-              </View>
+              </TouchableOpacity>
             ))
           )}
         </ScrollView>
       </KeyboardAvoidingView>
+
+      <Modal visible={jumpModalVisible} transparent animationType="fade" onRequestClose={() => setJumpModalVisible(false)}>
+        <TouchableOpacity style={styles.jumpOverlay} activeOpacity={1} onPress={() => setJumpModalVisible(false)}>
+          <View style={styles.jumpModal}>
+            <Text style={styles.jumpTitle}>Move to position</Text>
+            <Text style={styles.jumpSubtitle}>
+              Currently at position {jumpTargetIndex != null ? jumpTargetIndex + 1 : ''} of {exercises.length}
+            </Text>
+            <TextInput
+              style={styles.jumpInput}
+              value={jumpPosition}
+              onChangeText={setJumpPosition}
+              keyboardType="numeric"
+              placeholder={`1 - ${exercises.length}`}
+              placeholderTextColor={Colors.textTertiary}
+              autoFocus
+              selectTextOnFocus
+            />
+            <View style={styles.jumpActions}>
+              <TouchableOpacity style={styles.jumpCancelBtn} onPress={() => setJumpModalVisible(false)} activeOpacity={0.7}>
+                <Text style={styles.jumpCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.jumpConfirmBtn} onPress={handleJumpToPosition} activeOpacity={0.7}>
+                <Text style={styles.jumpConfirmText}>Move</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </Modal>
   );
 }
@@ -579,15 +643,25 @@ const styles = StyleSheet.create({
   programExActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 6,
   },
-  moveBtn: {
-    width: 28,
-    height: 28,
-    borderRadius: 6,
-    backgroundColor: Colors.inputBg,
+  gripHandle: {
     justifyContent: 'center',
     alignItems: 'center',
+    marginRight: 4,
+  },
+  moveBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  moveBtnEnabled: {
+    backgroundColor: Colors.accentLight,
+  },
+  moveBtnDisabled: {
+    backgroundColor: Colors.borderLight,
   },
   removeBtn: {
     width: 28,
@@ -621,5 +695,78 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: Colors.text,
     textAlign: 'center',
+  },
+  jumpOverlay: {
+    flex: 1,
+    backgroundColor: Colors.overlay,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 40,
+  },
+  jumpModal: {
+    backgroundColor: Colors.card,
+    borderRadius: 16,
+    padding: 24,
+    width: '100%',
+    maxWidth: 300,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  jumpTitle: {
+    fontSize: 17,
+    fontWeight: '700' as const,
+    color: Colors.text,
+    textAlign: 'center',
+    marginBottom: 4,
+  },
+  jumpSubtitle: {
+    fontSize: 13,
+    color: Colors.textSecondary,
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  jumpInput: {
+    backgroundColor: Colors.inputBg,
+    borderRadius: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    fontSize: 18,
+    fontWeight: '600' as const,
+    color: Colors.text,
+    textAlign: 'center',
+    borderWidth: 1,
+    borderColor: Colors.borderLight,
+    marginBottom: 16,
+  },
+  jumpActions: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  jumpCancelBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 10,
+    backgroundColor: Colors.inputBg,
+    alignItems: 'center',
+  },
+  jumpCancelText: {
+    fontSize: 14,
+    fontWeight: '600' as const,
+    color: Colors.textSecondary,
+  },
+  jumpConfirmBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 10,
+    backgroundColor: Colors.accent,
+    alignItems: 'center',
+  },
+  jumpConfirmText: {
+    fontSize: 14,
+    fontWeight: '600' as const,
+    color: Colors.white,
   },
 });

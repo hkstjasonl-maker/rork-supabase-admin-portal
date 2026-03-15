@@ -15,6 +15,14 @@ import { X, ArrowRightLeft } from 'lucide-react-native';
 import { trad2simp } from '@/utils/trad2simp';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '@/constants/colors';
+import {
+  DOSAGE_PRESETS_EN,
+  DOSAGE_PRESETS_HANT,
+  DOSAGE_PRESETS_HANS,
+  DURATION_PRESETS,
+  DOSAGE_PER_DAY_PRESETS,
+  DAYS_PER_WEEK_PRESETS,
+} from '@/constants/dosagePresets';
 import { useLanguage } from '@/providers/LanguageProvider';
 import type { Exercise, ExerciseFormData } from '@/types/exercise';
 import { extractVimeoId, extractYouTubeId } from '@/types/exercise';
@@ -255,8 +263,53 @@ export default function ExerciseFormModal({
 
           <Text style={styles.sectionLabel}>Dosage</Text>
           {renderField(t('exercise.duration'), duration, setDuration, { keyboardType: 'numeric' })}
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.presetScroll}>
+            <View style={styles.presetRow}>
+              {DURATION_PRESETS.map((val) => (
+                <TouchableOpacity
+                  key={val}
+                  onPress={() => setDuration(String(val))}
+                  style={[styles.presetChip, duration === String(val) && styles.presetChipActive]}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[styles.presetChipText, duration === String(val) && styles.presetChipTextActive]}>{val} min</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </ScrollView>
+
           {renderField(t('exercise.dosage'), dosage, setDosage)}
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.presetScroll}>
+            <View style={styles.presetRow}>
+              {DOSAGE_PRESETS_EN.map((preset) => (
+                <TouchableOpacity
+                  key={preset}
+                  onPress={() => setDosage(preset)}
+                  style={[styles.presetChip, dosage === preset && styles.presetChipActive]}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[styles.presetChipText, dosage === preset && styles.presetChipTextActive]}>{preset}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </ScrollView>
+
           {renderField('Dosage (繁中)', dosageZhHant, setDosageZhHant)}
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.presetScroll}>
+            <View style={styles.presetRow}>
+              {DOSAGE_PRESETS_HANT.map((preset) => (
+                <TouchableOpacity
+                  key={preset}
+                  onPress={() => setDosageZhHant(preset)}
+                  style={[styles.presetChip, dosageZhHant === preset && styles.presetChipActive]}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[styles.presetChipText, dosageZhHant === preset && styles.presetChipTextActive]}>{preset}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </ScrollView>
+
           <View style={styles.fieldWithConvert}>
             <View style={styles.fieldFlex}>
               {renderField('Dosage (简中)', dosageZhHans, setDosageZhHans)}
@@ -270,8 +323,52 @@ export default function ExerciseFormModal({
               <Text style={styles.convertBtnText}>繁→简</Text>
             </TouchableOpacity>
           </View>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.presetScroll}>
+            <View style={styles.presetRow}>
+              {DOSAGE_PRESETS_HANS.map((preset) => (
+                <TouchableOpacity
+                  key={preset}
+                  onPress={() => setDosageZhHans(preset)}
+                  style={[styles.presetChip, dosageZhHans === preset && styles.presetChipActive]}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[styles.presetChipText, dosageZhHans === preset && styles.presetChipTextActive]}>{preset}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </ScrollView>
+
           {renderField(t('exercise.dosage_per_day'), dosagePerDay, setDosagePerDay, { keyboardType: 'numeric' })}
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.presetScroll}>
+            <View style={styles.presetRow}>
+              {DOSAGE_PER_DAY_PRESETS.map((val) => (
+                <TouchableOpacity
+                  key={val}
+                  onPress={() => setDosagePerDay(String(val))}
+                  style={[styles.presetChip, dosagePerDay === String(val) && styles.presetChipActive]}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[styles.presetChipText, dosagePerDay === String(val) && styles.presetChipTextActive]}>{val}x</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </ScrollView>
+
           {renderField(t('exercise.dosage_days_per_week'), dosageDaysPerWeek, setDosageDaysPerWeek, { keyboardType: 'numeric' })}
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.presetScroll}>
+            <View style={styles.presetRow}>
+              {DAYS_PER_WEEK_PRESETS.map((val) => (
+                <TouchableOpacity
+                  key={val}
+                  onPress={() => setDosageDaysPerWeek(String(val))}
+                  style={[styles.presetChip, dosageDaysPerWeek === String(val) && styles.presetChipActive]}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[styles.presetChipText, dosageDaysPerWeek === String(val) && styles.presetChipTextActive]}>{val} days</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </ScrollView>
 
           <Text style={styles.sectionLabel}>Audio Instructions</Text>
           {renderField(t('exercise.audio_en'), audioEn, setAudioEn, { keyboardType: 'url' })}
@@ -451,5 +548,34 @@ const styles = StyleSheet.create({
     color: Colors.white,
     fontSize: 16,
     fontWeight: '600' as const,
+  },
+  presetScroll: {
+    marginTop: -10,
+    marginBottom: 12,
+  },
+  presetRow: {
+    flexDirection: 'row' as const,
+    gap: 6,
+    paddingVertical: 2,
+  },
+  presetChip: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 12,
+    backgroundColor: Colors.inputBg,
+    borderWidth: 1,
+    borderColor: Colors.borderLight,
+  },
+  presetChipActive: {
+    backgroundColor: Colors.accentLight,
+    borderColor: Colors.accent,
+  },
+  presetChipText: {
+    fontSize: 11,
+    fontWeight: '600' as const,
+    color: Colors.textSecondary,
+  },
+  presetChipTextActive: {
+    color: Colors.accent,
   },
 });

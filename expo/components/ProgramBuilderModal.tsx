@@ -16,6 +16,12 @@ import { X, Plus, Search, Trash2, ChevronUp, ChevronDown, GripVertical } from 'l
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQuery } from '@tanstack/react-query';
 import { Colors } from '@/constants/colors';
+import {
+  DOSAGE_PRESETS_EN,
+  DURATION_PRESETS,
+  DOSAGE_PER_DAY_PRESETS,
+  DAYS_PER_WEEK_PRESETS,
+} from '@/constants/dosagePresets';
 import { useLanguage } from '@/providers/LanguageProvider';
 import { supabase } from '@/lib/supabase';
 import type { Exercise } from '@/types/exercise';
@@ -403,6 +409,76 @@ export default function ProgramBuilderModal({
                     />
                   </View>
                 </View>
+
+                <View style={styles.presetSection}>
+                  <Text style={styles.presetSectionLabel}>Duration</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                    <View style={styles.presetRow}>
+                      {DURATION_PRESETS.map((val) => (
+                        <TouchableOpacity
+                          key={val}
+                          onPress={() => handleUpdateField(ex.temp_id, 'duration_minutes', val)}
+                          style={[styles.presetChip, ex.duration_minutes === val && styles.presetChipActive]}
+                          activeOpacity={0.7}
+                        >
+                          <Text style={[styles.presetChipText, ex.duration_minutes === val && styles.presetChipTextActive]}>{val} min</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  </ScrollView>
+                </View>
+
+                <View style={styles.presetSection}>
+                  <Text style={styles.presetSectionLabel}>Dosage</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                    <View style={styles.presetRow}>
+                      {DOSAGE_PRESETS_EN.map((preset) => (
+                        <TouchableOpacity
+                          key={preset}
+                          onPress={() => handleUpdateField(ex.temp_id, 'dosage', preset)}
+                          style={[styles.presetChip, ex.dosage === preset && styles.presetChipActive]}
+                          activeOpacity={0.7}
+                        >
+                          <Text style={[styles.presetChipText, ex.dosage === preset && styles.presetChipTextActive]}>{preset}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  </ScrollView>
+                </View>
+
+                <View style={styles.presetSection}>
+                  <Text style={styles.presetSectionLabel}>Per Day / Days per Week</Text>
+                  <View style={styles.presetDoubleRow}>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.presetHalf}>
+                      <View style={styles.presetRow}>
+                        {DOSAGE_PER_DAY_PRESETS.map((val) => (
+                          <TouchableOpacity
+                            key={val}
+                            onPress={() => handleUpdateField(ex.temp_id, 'dosage_per_day', val)}
+                            style={[styles.presetChip, ex.dosage_per_day === val && styles.presetChipActive]}
+                            activeOpacity={0.7}
+                          >
+                            <Text style={[styles.presetChipText, ex.dosage_per_day === val && styles.presetChipTextActive]}>{val}x/day</Text>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                    </ScrollView>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.presetHalf}>
+                      <View style={styles.presetRow}>
+                        {DAYS_PER_WEEK_PRESETS.map((val) => (
+                          <TouchableOpacity
+                            key={val}
+                            onPress={() => handleUpdateField(ex.temp_id, 'dosage_days_per_week', val)}
+                            style={[styles.presetChip, ex.dosage_days_per_week === val && styles.presetChipActive]}
+                            activeOpacity={0.7}
+                          >
+                            <Text style={[styles.presetChipText, ex.dosage_days_per_week === val && styles.presetChipTextActive]}>{val}d/wk</Text>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                    </ScrollView>
+                  </View>
+                </View>
               </TouchableOpacity>
             ))
           )}
@@ -768,5 +844,47 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600' as const,
     color: Colors.white,
+  },
+  presetSection: {
+    marginTop: 8,
+  },
+  presetSectionLabel: {
+    fontSize: 10,
+    fontWeight: '600' as const,
+    color: Colors.textTertiary,
+    textTransform: 'uppercase' as const,
+    marginBottom: 4,
+  },
+  presetRow: {
+    flexDirection: 'row' as const,
+    gap: 6,
+    paddingVertical: 2,
+  },
+  presetDoubleRow: {
+    flexDirection: 'row' as const,
+    gap: 8,
+  },
+  presetHalf: {
+    flex: 1,
+  },
+  presetChip: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 12,
+    backgroundColor: Colors.inputBg,
+    borderWidth: 1,
+    borderColor: Colors.borderLight,
+  },
+  presetChipActive: {
+    backgroundColor: Colors.accentLight,
+    borderColor: Colors.accent,
+  },
+  presetChipText: {
+    fontSize: 11,
+    fontWeight: '600' as const,
+    color: Colors.textSecondary,
+  },
+  presetChipTextActive: {
+    color: Colors.accent,
   },
 });
